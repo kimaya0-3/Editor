@@ -8,7 +8,7 @@ A local development setup guide for contributors with repository access.
 
 Ensure you have the following installed on your machine before getting started:
 
-- **Node.js** (v18 or higher recommended)
+- **Node.js** (v18 or higher recommended) (https://nodejs.org/en) 
 - **npm** (comes with Node.js)
 ---
 
@@ -17,6 +17,9 @@ Ensure you have the following installed on your machine before getting started:
 ### 1. Clone the Repository
 
 git clone https://github.com/kimaya0-3/Editor.git
+
+cd Editor 
+
 
 ### 2. Install Dependencies
 
