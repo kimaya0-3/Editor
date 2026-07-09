@@ -154,6 +154,11 @@ const defaultLayout: DiagramLayout = {
 }
 
 // ─── ID generators ────────────────────────────────────────────────────────────
+// Formats match real TRA-X JSON exports exactly:
+//   Security Zones:  SZ-<n>
+//   SW Components:   SW-<n>
+//   Interfaces:      LI-<n>   ← was IF-<n>
+//   Communications:  LC-<n>   ← was CM-<n>
 
 const extractNumber = (id: string): number => {
   const match = id.match(/(\d+)$/)
@@ -174,20 +179,21 @@ const makeComponentId = (): string => {
 
 const makeInterfaceId = (subUnit_id?: string): string => {
   const comps = useProjectStore.getState().project?.SWComponents ?? []
+
+  // Always use global max across ALL interfaces to prevent any collision
+  const globalMax = comps
+    .flatMap((c) => c.LogicalInterfaces ?? [])
+    .reduce((acc, li) => Math.max(acc, extractNumber(li.interface_id)), 0)
+
   if (subUnit_id) {
-    const comp = comps.find((c) => c.subUnit_id === subUnit_id)
-    const max  = (comp?.LogicalInterfaces ?? []).reduce(
+    const comp     = comps.find((c) => c.subUnit_id === subUnit_id)
+    const localMax = (comp?.LogicalInterfaces ?? []).reduce(
       (acc, li) => Math.max(acc, extractNumber(li.interface_id)), 0
     )
-    const globalMax = comps.flatMap((c) => c.LogicalInterfaces ?? []).reduce(
-      (acc, li) => Math.max(acc, extractNumber(li.interface_id)), 0
-    )
-    return `IF-${Math.max(max, globalMax) + 1}`
+    return `LI-${Math.max(localMax, globalMax) + 1}`
   }
-  const max = comps.flatMap((c) => c.LogicalInterfaces ?? []).reduce(
-    (acc, li) => Math.max(acc, extractNumber(li.interface_id)), 0
-  )
-  return `IF-${max + 1}`
+
+  return `LI-${globalMax + 1}`
 }
 
 const makeCommId = (): string => {
@@ -203,7 +209,7 @@ const makeCommId = (): string => {
     .flatMap((z) => z.ZoneCommunications ?? [])
     .reduce((acc, cm) => Math.max(acc, extractNumber(cm.communication_id)), 0)
 
-  return `CM-${Math.max(maxComp, maxZone) + 1}`
+  return `LC-${Math.max(maxComp, maxZone) + 1}`
 }
 
 export { makeZoneId, makeComponentId, makeInterfaceId, makeCommId }
@@ -1161,8 +1167,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
     }),
 
-  // ── NEW: updateZoneCommunication ──────────────────────────────────────────
-
   updateZoneCommunication: (comm_id, partial) =>
     set((s) => {
       if (!s.project) return s
@@ -1360,8 +1364,6 @@ export const useSelectedComponent = () => {
   if (!project || !selectedComponentId) return null
   return project.SWComponents?.find((c) => c.subUnit_id === selectedComponentId) ?? null
 }
-
-// ── FIXED: now searches both component comms AND zone comms ──────────────────
 
 export type SelectedComm =
   | { kind: 'component'; comm: TraxInterSWCommunication }
