@@ -1,10 +1,11 @@
+// src/components/Editor/EditorPanel.tsx
+
 import React, { useCallback, useState } from 'react'
 import { useProjectStore }    from '../../store/projectStore'
 import { EntityPalette }      from '../Editor/EntityPalette'
 import { ZoneEditor }         from '../Editor/ZoneEditor'
 import { ComponentEditor }    from '../Editor/ComponentEditor'
 import { EdgeEditor }         from '../Editor/EdgeEditor'
-import { useExport }          from '../../hooks/useExport'
 import { useUndoRedo }        from '../../hooks/useUndoRedo'
 import { useCanUndo, useCanRedo } from '../../store/projectStore'
 import {
@@ -45,6 +46,7 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
   const deleteZone          = useProjectStore((s) => s.deleteZone)
   const deleteComponent     = useProjectStore((s) => s.deleteComponent)
   const deleteCommunication = useProjectStore((s) => s.deleteCommunication)
+  const deleteZoneCommunication = useProjectStore((s) => s.deleteZoneCommunication)
   const clearSelection      = useProjectStore((s) => s.clearSelection)
   const selectedZoneId      = useProjectStore((s) => s.selectedZoneId)
   const selectedComponentId = useProjectStore((s) => s.selectedComponentId)
@@ -52,27 +54,35 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
 
   const zone      = useSelectedZone()
   const component = useSelectedComponent()
-  const comm      = useSelectedCommunication()
+  const commResult = useSelectedCommunication()
 
-  const { exportTraxJson, exportImage } = useExport()
-  const { undo, redo }                  = useUndoRedo()
-  const canUndo                         = useCanUndo()
-  const canRedo                         = useCanRedo()
+  const { undo, redo } = useUndoRedo()
+  const canUndo        = useCanUndo()
+  const canRedo        = useCanRedo()
 
   const isDark       = theme === 'dark'
   const tokens       = tk(isDark)
   const [collapsed, setCollapsed] = useState(false)
-  const hasSelection = !!(zone || component || comm)
-  const selectionKind = zone ? 'Zone' : component ? 'Component' : comm ? 'Edge' : null
+  const hasSelection  = !!(zone || component || commResult)
+  const selectionKind = zone ? 'Zone' : component ? 'Component' : commResult ? 'Edge' : null
 
   // ── Delete handler ────────────────────────────────────────────────────────
   const handleDelete = useCallback(() => {
     if (selectedZoneId)      { deleteZone(selectedZoneId);           clearSelection(); return }
     if (selectedComponentId) { deleteComponent(selectedComponentId); clearSelection(); return }
-    if (selectedCommId)      { deleteCommunication(selectedCommId);  clearSelection(); return }
+    if (selectedCommId) {
+      if (commResult?.kind === 'zone') {
+        deleteZoneCommunication(selectedCommId)
+      } else {
+        deleteCommunication(selectedCommId)
+      }
+      clearSelection()
+      return
+    }
   }, [
-    selectedZoneId, selectedComponentId, selectedCommId,
-    deleteZone, deleteComponent, deleteCommunication, clearSelection,
+    selectedZoneId, selectedComponentId, selectedCommId, commResult,
+    deleteZone, deleteComponent, deleteCommunication, deleteZoneCommunication,
+    clearSelection,
   ])
 
   if (!project) return null
@@ -106,7 +116,6 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
 
         {!collapsed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            {/* Accent bar */}
             <div style={{
               width:        '3px',
               height:       '16px',
@@ -126,7 +135,6 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
               Editor
             </span>
 
-            {/* Selection badge */}
             {hasSelection && selectionKind && (
               <span style={{
                 fontSize:     '10px',
@@ -143,7 +151,6 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
           </div>
         )}
 
-        {/* Toggle button */}
         <ToggleButton
           collapsed={collapsed}
           isDark={isDark}
@@ -177,9 +184,16 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
 
         {zone      && <ZoneEditor      zone={zone}           isDark={isDark} />}
         {component && <ComponentEditor component={component} isDark={isDark} />}
-        {comm      && <EdgeEditor      comm={comm}           isDark={isDark} />}
 
-        {/* ── Empty state ─────────────────────────────────────────────── */}
+        {/* Pass the unwrapped comm + kind to EdgeEditor */}
+        {commResult && (
+          <EdgeEditor
+            comm={commResult.comm}
+            kind={commResult.kind}
+            isDark={isDark}
+          />
+        )}
+
         {!hasSelection && <EmptyState isDark={isDark} />}
 
       </div>
@@ -197,7 +211,6 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
         transition:    'opacity 0.15s',
       }}>
 
-        {/* ── Delete ──────────────────────────────────────────────────── */}
         {hasSelection && selectionKind && (
           <>
             <FooterButton
@@ -220,7 +233,6 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
           </>
         )}
 
-        {/* ── Undo / Redo ──────────────────────────────────────────────── */}
         <div style={{ display: 'flex', gap: '6px' }}>
           <UndoRedoButton
             onClick={undo}
@@ -259,65 +271,6 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
           </UndoRedoButton>
         </div>
 
-        <div style={{ height: '1px', background: tokens.border, margin: '2px 0' }} />
-
-        {/* ── Exports ──────────────────────────────────────────────────── */}
-        <FooterButton
-          variant="export"
-          isDark={isDark}
-          onClick={exportTraxJson}
-          icon={
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path
-                d="M2 9v2h9V9M6.5 2v6M4 6l2.5 2.5L9 6"
-                stroke="currentColor" strokeWidth="1.3"
-                strokeLinecap="round" strokeLinejoin="round"
-              />
-            </svg>
-          }
-        >
-          Export JSON
-        </FooterButton>
-
-        <FooterButton
-          variant="export"
-          isDark={isDark}
-          onClick={() => exportImage('png')}
-          icon={
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <rect x="1.5" y="1.5" width="10" height="10" rx="1.5"
-                stroke="currentColor" strokeWidth="1.3"/>
-              <path
-                d="M1.5 9l3-3 2 2 2-2.5 3 3.5"
-                stroke="currentColor" strokeWidth="1.3"
-                strokeLinecap="round" strokeLinejoin="round"
-              />
-            </svg>
-          }
-        >
-          Export PNG
-        </FooterButton>
-
-        <FooterButton
-          variant="export"
-          isDark={isDark}
-          onClick={() => exportImage('jpeg')}
-          icon={
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <rect x="1.5" y="1.5" width="10" height="10" rx="1.5"
-                stroke="currentColor" strokeWidth="1.3"/>
-              <path
-                d="M1.5 9l3-3 2 2 2-2.5 3 3.5"
-                stroke="currentColor" strokeWidth="1.3"
-                strokeLinecap="round" strokeLinejoin="round"
-              />
-              <circle cx="9.5" cy="4" r="1" fill="currentColor"/>
-            </svg>
-          }
-        >
-          Export JPEG
-        </FooterButton>
-
       </div>
     </div>
   )
@@ -352,11 +305,6 @@ const EmptyState = ({ isDark }: { isDark: boolean }) => (
           stroke={isDark ? '#334155' : '#cbd5e1'}
           strokeWidth="1.5"
           fill="none"
-        />
-        <path
-          d="M11 2L20 6.5M11 2L2 6.5M11 2V11M20 6.5V15.5L11 20M20 6.5L11 11M2 6.5V15.5L11 20M2 6.5L11 11M11 20V11"
-          stroke={isDark ? '#1e293b' : '#e2e8f0'}
-          strokeWidth="1"
         />
         <circle cx="11" cy="11" r="2"
           fill={isDark ? '#1e293b' : '#e2e8f0'}
@@ -489,7 +437,7 @@ const UndoRedoButton = ({
 const FooterButton = ({
   variant, isDark, onClick, icon, children,
 }: {
-  variant:  'export' | 'danger'
+  variant:  'danger'
   isDark:   boolean
   onClick:  () => void
   icon:     React.ReactNode
@@ -503,12 +451,6 @@ const FooterButton = ({
       bgHover: isDark ? '#5a0d0d' : '#fee2e2',
       color:   isDark ? '#f87171' : '#dc2626',
       border:  isDark ? '#7f1d1d' : '#fecaca',
-    },
-    export: {
-      bg:      isDark ? '#111827' : '#f8fafc',
-      bgHover: isDark ? '#1e293b' : '#f1f5f9',
-      color:   isDark ? '#64748b' : '#475569',
-      border:  isDark ? '#1e293b' : '#e2e8f0',
     },
   }[variant]
 

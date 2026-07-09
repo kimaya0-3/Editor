@@ -124,6 +124,7 @@ interface ProjectState {
 
   // ── Zone communication mutations ──────────────────────────────────────────
   addZoneCommunication:    (zoneId: string, comm: TraxZoneCommunication, layout: Omit<EdgeLayout, 'id'>) => void
+  updateZoneCommunication: (comm_id: string, partial: Partial<TraxZoneCommunication>) => void
   deleteZoneCommunication: (comm_id: string) => void
 
   // ── Layout mutations ──────────────────────────────────────────────────────
@@ -178,7 +179,6 @@ const makeInterfaceId = (subUnit_id?: string): string => {
     const max  = (comp?.LogicalInterfaces ?? []).reduce(
       (acc, li) => Math.max(acc, extractNumber(li.interface_id)), 0
     )
-    // Also check global max so we never collide with another component's IDs
     const globalMax = comps.flatMap((c) => c.LogicalInterfaces ?? []).reduce(
       (acc, li) => Math.max(acc, extractNumber(li.interface_id)), 0
     )
@@ -534,9 +534,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         diagramLayout:           previous.diagramLayout,
         past:                    newPast,
         future:                  [currentSnapshot, ...s.future].slice(0, MAX_HISTORY),
-        selectedZoneId:          null,
-        selectedComponentId:     null,
-        selectedCommunicationId: null,
       }
     }),
 
@@ -559,9 +556,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         diagramLayout:           next.diagramLayout,
         past:                    [...s.past, currentSnapshot].slice(-MAX_HISTORY),
         future:                  newFuture,
-        selectedZoneId:          null,
-        selectedComponentId:     null,
-        selectedCommunicationId: null,
       }
     }),
 
@@ -1080,7 +1074,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => {
       if (!s.project) return s
 
-      // Write stub interface onto target AND comm onto source in one pass
       const newComponents = s.project.SWComponents.map((c) => {
         if (stub && c.subUnit_id === targetId) {
           return {
@@ -1166,6 +1159,26 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         project:       newProject,
         diagramLayout: newLayout,
       }
+    }),
+
+  // ── NEW: updateZoneCommunication ──────────────────────────────────────────
+
+  updateZoneCommunication: (comm_id, partial) =>
+    set((s) => {
+      if (!s.project) return s
+
+      const newProject = {
+        ...s.project,
+        SecurityZones: s.project.SecurityZones.map((z) => ({
+          ...z,
+          ZoneCommunications: (z.ZoneCommunications ?? []).map((cm) =>
+            cm.communication_id === comm_id ? { ...cm, ...partial } : cm
+          ),
+        })),
+      }
+
+      saveToStorage(newProject, s.diagramLayout)
+      return { ...pushHistory(s), project: newProject }
     }),
 
   deleteZoneCommunication: (comm_id) =>
@@ -1348,13 +1361,32 @@ export const useSelectedComponent = () => {
   return project.SWComponents?.find((c) => c.subUnit_id === selectedComponentId) ?? null
 }
 
-export const useSelectedCommunication = () => {
+// ── FIXED: now searches both component comms AND zone comms ──────────────────
+
+export type SelectedComm =
+  | { kind: 'component'; comm: TraxInterSWCommunication }
+  | { kind: 'zone';      comm: TraxZoneCommunication      }
+
+export const useSelectedCommunication = (): SelectedComm | null => {
   const project                 = useProjectStore((s) => s.project)
   const selectedCommunicationId = useProjectStore((s) => s.selectedCommunicationId)
   if (!project || !selectedCommunicationId) return null
-  return project.SWComponents
+
+  // Search component comms first
+  const compComm = project.SWComponents
     ?.flatMap((c) => c.InterSWCommunications ?? [])
-    .find((cm) => cm.communication_id === selectedCommunicationId) ?? null
+    .find((cm) => cm.communication_id === selectedCommunicationId)
+
+  if (compComm) return { kind: 'component', comm: compComm }
+
+  // Then zone comms
+  const zoneComm = project.SecurityZones
+    ?.flatMap((z) => z.ZoneCommunications ?? [])
+    .find((cm) => cm.communication_id === selectedCommunicationId)
+
+  if (zoneComm) return { kind: 'zone', comm: zoneComm }
+
+  return null
 }
 
 export const useCommunicationSource = (comm_id: string) => {

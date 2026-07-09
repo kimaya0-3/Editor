@@ -1,4 +1,4 @@
-// ─── Canvas.tsx ───────────────────────────────────────────────────────────────
+// src/components/Canvas/Canvas.tsx
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import {
@@ -21,13 +21,13 @@ import type {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { ZoneNode }            from './ZoneNode'
-import { ComponentNode }       from './ComponentNode'
-import { HoverEdge }           from './HoverEdge'
-import { useProjectStore }     from '../../store/projectStore'
-import { useAddZone }          from '../../hooks/useAddZone'
-import { useAddComponent }     from '../../hooks/useAddComponent'
-import { useAddCommunication } from '../../hooks/useAddCommunication'
+import { ZoneNode }              from './ZoneNode'
+import { ComponentNode }         from './ComponentNode'
+import { HoverEdge }             from './HoverEdge'
+import { useProjectStore }       from '../../store/projectStore'
+import { useAddZone }            from '../../hooks/useAddZone'
+import { useAddComponent }       from '../../hooks/useAddComponent'
+import { useAddCommunication }   from '../../hooks/useAddCommunication'
 import {
   buildNodes,
   communicationsToEdges,
@@ -66,15 +66,17 @@ const CanvasInner = () => {
   const selectedCommunicationId = useProjectStore((s) => s.selectedCommunicationId)
   const editorMode              = useProjectStore((s) => s.editorMode)
   const setEditorMode           = useProjectStore((s) => s.setEditorMode)
+  const deleteCommunication     = useProjectStore((s) => s.deleteCommunication)
+  const deleteZoneCommunication = useProjectStore((s) => s.deleteZoneCommunication)
   const isDark                  = theme === 'dark'
 
   const settings = diagramLayout.settings
 
   const { screenToFlowPosition, fitView } = useReactFlow()
 
-  const handleAddZone      = useAddZone()
-  const handleAddComponent = useAddComponent()
-  const handleAddEdge      = useAddCommunication()
+  const handleAddZone        = useAddZone()
+  const handleAddComponent   = useAddComponent()
+  const { handleAddEdge }    = useAddCommunication()
 
   // ── Container ready gate ──────────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement>(null)
@@ -217,11 +219,33 @@ const CanvasInner = () => {
   // ── Escape key ────────────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && editorMode !== 'idle') setEditorMode('idle')
+      if (e.key === 'Escape' && editorMode !== 'idle') {
+        setEditorMode('idle')
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [editorMode, setEditorMode])
+
+  // ── Clamp drag to parent bounds ───────────────────────────────────────────
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (!node.parentId) return
+      const parent = nodes.find((n) => n.id === node.parentId)
+      if (!parent?.style) return
+
+      const parentW = Number(parent.style.width  ?? 300)
+      const parentH = Number(parent.style.height ?? 200)
+      const nodeW   = 220
+      const nodeH   = 40
+
+      const clampedX = Math.min(Math.max(0, node.position.x), parentW - nodeW)
+      const clampedY = Math.min(Math.max(0, node.position.y), parentH - nodeH)
+
+      updateNodePosition(node.id, clampedX, clampedY, node.parentId)
+    },
+    [nodes, updateNodePosition],
+  )
 
   // ── Node changes ──────────────────────────────────────────────────────────
   const onNodesChange = useCallback(
@@ -248,12 +272,18 @@ const CanvasInner = () => {
     [updateNodePosition],
   )
 
-  // ── Edge changes ──────────────────────────────────────────────────────────
+  // ── Edge changes — intercept removes so they delete from store too ─────────
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
+      changes.forEach((change) => {
+        if (change.type === 'remove') {
+          deleteCommunication(change.id)
+          deleteZoneCommunication(change.id)
+        }
+      })
       setEdges((eds) => applyEdgeChanges(changes, eds))
     },
-    [],
+    [deleteCommunication, deleteZoneCommunication],
   )
 
   // ── Edge click ────────────────────────────────────────────────────────────
@@ -301,12 +331,14 @@ const CanvasInner = () => {
     [editorMode, handleAddZone, clearSelection],
   )
 
-  // ── onConnect ─────────────────────────────────────────────────────────────
+  // ── onConnect — create immediately, no modal ──────────────────────────────
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (editorMode === 'addEdge') handleAddEdge(connection)
+      if (editorMode !== 'addEdge') return
+      handleAddEdge(connection)
+      setEditorMode('idle')
     },
-    [editorMode, handleAddEdge],
+    [editorMode, handleAddEdge, setEditorMode],
   )
 
   // ── Cursor ────────────────────────────────────────────────────────────────
@@ -324,6 +356,7 @@ const CanvasInner = () => {
         height:     '100%',
         background: isDark ? '#030712' : '#f8fafc',
         cursor:     cursorStyle,
+        position:   'relative',
       }}
     >
       {ready && (
@@ -334,6 +367,7 @@ const CanvasInner = () => {
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDragStop={onNodeDragStop}
           onEdgeClick={onEdgeClick}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}

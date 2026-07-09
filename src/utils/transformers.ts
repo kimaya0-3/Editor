@@ -178,7 +178,7 @@ export const buildNodes = (
       type:     'zoneNode' as const,
       position: { x, y },
       style:    { width: size?.width ?? ZONE_MIN_W, height: size?.height ?? ZONE_MIN_H },
-      ...(parentId ? { parentId, extent: undefined } : {}),
+      ...(parentId ? { parentId, extent: 'parent' as const } : {}),
       connectable: true,
       data: {
         label:            zone.name,
@@ -216,6 +216,7 @@ export const buildNodes = (
         type:     'componentNode' as const,
         position: { x: cx, y: cy },
         parentId: zone.zone_id,
+        extent:   'parent' as const,
         data: {
           label:           comp.name,
           subUnit_id:      comp.subUnit_id,

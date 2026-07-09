@@ -1,7 +1,8 @@
-import { useRef, useState }    from 'react'
-import { useProjectStore }     from '../../store/projectStore'
-import { SearchBar }           from './SearchBar'
-import type { CanvasSettings } from '../../types/index'
+import { useRef, useState, useEffect } from 'react'
+import { useProjectStore }              from '../../store/projectStore'
+import { useExport }                    from '../../hooks/useExport'
+import { SearchBar }                    from './SearchBar'
+import type { CanvasSettings }          from '../../types/index'
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,17 @@ const Icons = {
   ),
 }
 
+// ─── IconImage ────────────────────────────────────────────────────────────────
+
+const IconImage = () => (
+  <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+)
+
 // ─── ToolbarSeparator ─────────────────────────────────────────────────────────
 
 const ToolbarSeparator = ({ isDark }: { isDark: boolean }) => (
@@ -214,6 +226,226 @@ const ToolbarButton = ({
   )
 }
 
+// ─── DropdownItem ─────────────────────────────────────────────────────────────
+
+const DropdownItem = ({
+  label, icon, isDark, onClick,
+}: {
+  label:   string
+  icon:    React.ReactNode
+  isDark:  boolean
+  onClick: () => void
+}) => {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width:        '100%',
+        display:      'flex',
+        alignItems:   'center',
+        gap:          '8px',
+        padding:      '7px 10px',
+        borderRadius: '6px',
+        border:       'none',
+        background:   hovered
+          ? (isDark ? '#1e293b' : '#f1f5f9')
+          : 'transparent',
+        color:        isDark ? '#94a3b8' : '#64748b',
+        fontSize:     '12px',
+        fontWeight:   400,
+        cursor:       'pointer',
+        textAlign:    'left',
+        whiteSpace:   'nowrap',
+        fontFamily:   'sans-serif',
+        transition:   'background 0.1s, color 0.1s',
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  )
+}
+
+// ─── ExportDropdown ───────────────────────────────────────────────────────────
+
+interface ExportDropdownProps {
+  isDark:             boolean
+  disabled:           boolean
+  onExportJson:       () => void
+  onExportJsonLayout: () => void
+  onExportPng:        () => void
+  onExportJpeg:       () => void
+}
+
+const ExportDropdown = ({
+  isDark,
+  disabled,
+  onExportJson,
+  onExportJsonLayout,
+  onExportPng,
+  onExportJpeg,
+}: ExportDropdownProps) => {
+  const [open,    setOpen]    = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const wrapperRef            = useRef<HTMLDivElement>(null)
+
+  // ── Close on outside click ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!wrapperRef.current?.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const getBg = () => {
+    if (hovered) return isDark ? '#1e293b' : '#f1f5f9'
+    if (open)    return isDark ? '#1e3a5f' : '#dbeafe'
+    return 'transparent'
+  }
+
+  const getBorder = () => {
+    if (open)    return isDark ? '#3b82f6' : '#2563eb'
+    if (hovered) return isDark ? '#334155' : '#e2e8f0'
+    return 'transparent'
+  }
+
+  const getColor = () => {
+    if (open) return isDark ? '#60a5fa' : '#1d4ed8'
+    return isDark ? '#94a3b8' : '#64748b'
+  }
+
+  const items: {
+    label:    string
+    icon:     React.ReactNode
+    onClick:  () => void
+    divider?: boolean
+  }[] = [
+    {
+      label:   'Export JSON',
+      icon:    <Icons.Export />,
+      onClick: () => { onExportJson(); setOpen(false) },
+    },
+    {
+      label:   'Export JSON + Layout',
+      icon:    <Icons.ImportLayout />,
+      onClick: () => { onExportJsonLayout(); setOpen(false) },
+      divider: true,
+    },
+    {
+      label:   'Export PNG',
+      icon:    <IconImage />,
+      onClick: () => { onExportPng(); setOpen(false) },
+    },
+    {
+      label:   'Export JPEG',
+      icon:    <IconImage />,
+      onClick: () => { onExportJpeg(); setOpen(false) },
+    },
+  ]
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', flexShrink: 0 }}>
+
+      {/* ── Trigger button ──────────────────────────────────────────────── */}
+      <button
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => { if (!disabled) setHovered(true)  }}
+        onMouseLeave={() => {                setHovered(false) }}
+        style={{
+          display:      'flex',
+          alignItems:   'center',
+          gap:          '5px',
+          padding:      '4px 9px',
+          borderRadius: '5px',
+          border:       `1px solid ${getBorder()}`,
+          background:   getBg(),
+          color:        getColor(),
+          fontSize:     '11px',
+          fontWeight:   open ? 600 : 400,
+          cursor:       disabled ? 'not-allowed' : 'pointer',
+          opacity:      disabled ? 0.35 : 1,
+          transition:   'all 0.12s',
+          whiteSpace:   'nowrap',
+          fontFamily:   'sans-serif',
+          lineHeight:   1,
+        }}
+      >
+        <Icons.Export />
+        Export
+        {/* Chevron */}
+        <svg
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+          style={{
+            marginLeft: '1px',
+            transition: 'transform 0.15s',
+            transform:  open ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
+        >
+          <path
+            d="M2 3.5L5 6.5L8 3.5"
+            stroke="currentColor" strokeWidth="1.4"
+            strokeLinecap="round" strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {/* ── Dropdown panel ──────────────────────────────────────────────── */}
+      {open && (
+        <div style={{
+          position:      'fixed',                         // ← was 'absolute'
+          top:           (() => {                         // ← calculate from DOM
+            const rect = wrapperRef.current?.getBoundingClientRect()
+            return rect ? `${rect.bottom + 6}px` : '46px'
+          })(),
+          left:          (() => {
+            const rect = wrapperRef.current?.getBoundingClientRect()
+            return rect ? `${rect.left}px` : 'auto'
+          })(),
+          minWidth:      '190px',
+          background:    isDark ? '#0f172a' : '#ffffff',
+          border:        `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}`,
+          borderRadius:  '10px',
+          boxShadow:     isDark
+            ? '0 8px 32px rgba(0,0,0,0.6)'
+            : '0 8px 32px rgba(0,0,0,0.12)',
+          zIndex:        999999,                          // ← bumped up
+          padding:       '6px',
+          display:       'flex',
+          flexDirection: 'column',
+          gap:           '2px',
+        }}>
+          {items.map((item, i) => (
+            <div key={i}>
+              {item.divider && i > 0 && (
+                <div style={{
+                  height:     '1px',
+                  background: isDark ? '#1e293b' : '#f1f5f9',
+                  margin:     '4px 0',
+                }} />
+              )}
+              <DropdownItem
+                label={item.label}
+                icon={item.icon}
+                isDark={isDark}
+                onClick={item.onClick}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 
 interface ToolbarProps {
@@ -229,8 +461,13 @@ export const Toolbar = ({ onLayoutChange }: ToolbarProps) => {
   const newProject           = useProjectStore((s) => s.newProject)
   const loadProject          = useProjectStore((s) => s.loadProject)
   const importLayout         = useProjectStore((s) => s.importLayout)
-  const exportJson           = useProjectStore((s) => s.exportJson)
   const clearProject         = useProjectStore((s) => s.clearProject)
+
+  const {
+    exportTraxJson,
+    exportJson:  exportJsonLayout,
+    exportImage,
+  } = useExport()
 
   const projectInputRef = useRef<HTMLInputElement>(null)
   const layoutInputRef  = useRef<HTMLInputElement>(null)
@@ -299,15 +536,18 @@ export const Toolbar = ({ onLayoutChange }: ToolbarProps) => {
 
   return (
     <div style={{
-      display:      'flex',
-      alignItems:   'center',
-      gap:          '2px',
-      padding:      '0 12px',
-      height:       '40px',
-      background:   isDark ? '#0f172a' : '#ffffff',
+      display:    'flex',
+      alignItems: 'center',
+      gap:        '2px',
+      padding:    '0 12px',
+      height:     '40px',
+      background: isDark ? '#0f172a' : '#ffffff',
       borderBottom: `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}`,
-      flexShrink:   0,
-      overflowX:    'auto',
+      flexShrink: 0,
+      overflowX:  'auto',
+      overflowY:  'visible',    // ← allow dropdown to escape vertically
+      position:   'relative',   // ← establish stacking context
+      zIndex:     100,          // ← sit above canvas content
     }}>
 
       {/* ── Hidden file inputs ─────────────────────────────────────────── */}
@@ -371,13 +611,13 @@ export const Toolbar = ({ onLayoutChange }: ToolbarProps) => {
             onClick={() => layoutInputRef.current?.click()}
             title="Load a .layout.json without replacing project data"
           />
-          <ToolbarButton
-            label="Export"
-            icon={<Icons.Export />}
-            active={false}
+          <ExportDropdown
             isDark={isDark}
-            onClick={() => exportJson()}
-            title="Export project.json + project.layout.json"
+            disabled={!hasProject}
+            onExportJson={exportTraxJson}
+            onExportJsonLayout={exportJsonLayout}
+            onExportPng={() => exportImage('png')}
+            onExportJpeg={() => exportImage('jpeg')}
           />
           <ToolbarButton
             label="Close"
@@ -469,9 +709,9 @@ export const Toolbar = ({ onLayoutChange }: ToolbarProps) => {
       {/* ── Search ────────────────────────────────────────────────────── */}
       {hasProject && (
         <div style={{
-          marginLeft: 'auto',
+          marginLeft:  'auto',
           marginRight: '8px',
-          flexShrink: 0,
+          flexShrink:  0,
         }}>
           <SearchBar />
         </div>

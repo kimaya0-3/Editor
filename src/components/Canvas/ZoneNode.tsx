@@ -15,7 +15,7 @@ export const ZoneNode = ({ data, selected }: NodeProps<ZoneNodeType>) => {
   return (
     <>
       <NodeResizer
-        isVisible={selected}
+        isVisible={isSelected}
         minWidth={300}
         minHeight={200}
         lineStyle={{ borderColor: '#3b82f6' }}
