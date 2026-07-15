@@ -197,6 +197,10 @@ export interface TraxAssetRef {
   asset_id: string
 }
 
+export interface TraxZoneInterfaceRef {
+  interface_id: string
+}
+
 export interface TraxThreatScenarioRef {
   threatscenario_id: string
 }
@@ -238,6 +242,8 @@ export interface TraxZoneCommunication {
   viaUntrustedZones:        boolean
   TargetZone:               TraxZoneRef
   SourceZone?:              TraxZoneRef
+  TargetInterface?:         TraxZoneInterfaceRef
+  SourceInterface?:         TraxZoneInterfaceRef
 }
 
 export interface TraxAssumptionRef {

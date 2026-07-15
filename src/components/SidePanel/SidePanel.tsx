@@ -3,6 +3,7 @@ import { useProjectStore } from '../../store/projectStore'
 import type {
   TraxSecurityZone,
   TraxZoneExposure,
+  TraxZoneInterface,
   TraxLogicalInterface,
   TraxSWComponent,
   ZoneInterfaceSubType,
@@ -45,6 +46,15 @@ const getNetworkInterfaceColor = (subType: ZoneInterfaceSubType | undefined): st
     case 'C2C_Interface':          return '#06b6d4' // Cyan
     case 'Technical_Interface':    return '#8b5cf6' // Violet
     default:                       return '#94a3b8' // Gray
+  }
+}
+
+const getZoneInterfaceColor = (type: TraxZoneInterface['abstractInterfaceType'] | undefined): string => {
+  switch (type) {
+    case 'Network':   return '#3b82f6'
+    case 'Proximity': return '#8b5cf6'
+    case 'Host':      return '#10b981'
+    default:          return '#94a3b8'
   }
 }
 
@@ -792,6 +802,58 @@ const ZonePanel = ({
           </Section>
         )}
 
+        {/* ── Zone Interfaces ──────────────────────────────────────────── */}
+        {(zone.ZoneInterfaces?.length ?? 0) > 0 && (
+          <Section isDark={isDark}>
+            <SectionLabel isDark={isDark}>
+              Zone Interfaces · {zone.ZoneInterfaces!.length}
+            </SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {zone.ZoneInterfaces!.map((iface) => {
+                const color = getZoneInterfaceColor(iface.abstractInterfaceType)
+                return (
+                  <Card key={iface.interface_id} isDark={isDark} accentColor={color}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: tk.textPrimary, lineHeight: 1.4 }}>
+                        {iface.name}
+                      </span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', color: tk.textMuted, marginLeft: '8px', flexShrink: 0 }}>
+                        {iface.interface_id}
+                      </span>
+                    </div>
+
+                    {iface.description && (
+                      <div style={{ fontSize: '11px', color: tk.textSecondary, lineHeight: 1.5, marginBottom: '7px' }}>
+                        {iface.description}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <RatingBadge rating={iface.specificExposureRating_I} isDark={isDark} />
+                      <Pill label={iface.abstractInterfaceType} isDark={isDark} color="blue" />
+                      {iface.isManagementInterface && (
+                        <Pill label="Mgmt" isDark={isDark} color="green" />
+                      )}
+                    </div>
+
+                    {iface.ConnectedToSecurityZone && (
+                      <div style={{ marginTop: '7px', fontSize: '11px', color: tk.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
+                          <path d="M1 5h8M6 2l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span>Connected to </span>
+                        <span style={{ fontFamily: 'monospace', color: tk.textMono }}>
+                          {iface.ConnectedToSecurityZone.zone_id}
+                        </span>
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          </Section>
+        )}
+
         {/* ── Network Interfaces ────────────────────────────────────────── */}
         {(zone.NetworkFacingInterfaces_Zone?.length ?? 0) > 0 && (
           <Section isDark={isDark}>
@@ -962,6 +1024,51 @@ const ZonePanel = ({
                     </div>
                   )}
 
+                </Card>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* ── Zone Communications ─────────────────────────────────────── */}
+        {(zone.ZoneCommunications?.length ?? 0) > 0 && (
+          <Section isDark={isDark}>
+            <SectionLabel isDark={isDark}>
+              Zone Communications · {zone.ZoneCommunications!.length}
+            </SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {zone.ZoneCommunications!.map((comm) => (
+                <Card key={comm.communication_id} isDark={isDark}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: tk.textPrimary, lineHeight: 1.4 }}>
+                      {comm.name}
+                    </span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '10px', color: tk.textMuted, marginLeft: '8px', flexShrink: 0 }}>
+                      {comm.communication_id}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                    <RatingBadge rating={comm.specificExposureRating_C} isDark={isDark} />
+                    {comm.viaUntrustedZones && (
+                      <Pill label="Via Untrusted" isDark={isDark} color="red" />
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: '7px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', color: tk.textMuted }}>
+                    <div>
+                      <span style={{ fontWeight: 600 }}>Source:</span> {comm.SourceZone?.zone_id ?? '—'}
+                      {comm.SourceInterface?.interface_id && (
+                        <span style={{ fontFamily: 'monospace', color: tk.textMono }}> · {comm.SourceInterface.interface_id}</span>
+                      )}
+                    </div>
+                    <div>
+                      <span style={{ fontWeight: 600 }}>Target:</span> {comm.TargetZone.zone_id}
+                      {comm.TargetInterface?.interface_id && (
+                        <span style={{ fontFamily: 'monospace', color: tk.textMono }}> · {comm.TargetInterface.interface_id}</span>
+                      )}
+                    </div>
+                  </div>
                 </Card>
               ))}
             </div>

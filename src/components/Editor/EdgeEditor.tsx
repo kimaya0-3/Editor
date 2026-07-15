@@ -359,6 +359,13 @@ const ZoneCommEditor = ({
   const project                 = useProjectStore((s) => s.project)
 
   const allZones = project?.SecurityZones ?? []
+  const sourceZone = comm.SourceZone
+    ? allZones.find((z) => z.zone_id === comm.SourceZone?.zone_id)
+    : null
+  const targetZone = allZones.find((z) => z.zone_id === comm.TargetZone.zone_id) ?? null
+
+  const sourceInterfaces = sourceZone?.ZoneInterfaces ?? []
+  const targetInterfaces = targetZone?.ZoneInterfaces ?? []
 
   const patch = useCallback(
     (partial: Partial<TraxZoneCommunication>) =>
@@ -403,6 +410,34 @@ const ZoneCommEditor = ({
             </div>
           )}
 
+          {comm.SourceZone && (
+            <div style={f.wrapper}>
+              <label style={f.label}>Source Interface</label>
+              {sourceInterfaces.length > 0 ? (
+                <select
+                  style={f.select}
+                  value={comm.SourceInterface?.interface_id ?? sourceInterfaces[0].interface_id}
+                  onChange={(e) =>
+                    patch({ SourceInterface: { interface_id: e.target.value } })
+                  }
+                >
+                  {sourceInterfaces.map((iface) => (
+                    <option key={iface.interface_id} value={iface.interface_id}>
+                      {iface.name} — {iface.interface_id}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  style={f.inputReadOnly}
+                  value={comm.SourceInterface?.interface_id ?? ''}
+                  readOnly
+                  placeholder="No zone interfaces"
+                />
+              )}
+            </div>
+          )}
+
           {/* Target Zone — editable dropdown */}
           {comm.TargetZone && (
             <div style={f.wrapper}>
@@ -420,6 +455,34 @@ const ZoneCommEditor = ({
                   </option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {comm.TargetZone && (
+            <div style={f.wrapper}>
+              <label style={f.label}>Target Interface</label>
+              {targetInterfaces.length > 0 ? (
+                <select
+                  style={f.select}
+                  value={comm.TargetInterface?.interface_id ?? targetInterfaces[0].interface_id}
+                  onChange={(e) =>
+                    patch({ TargetInterface: { interface_id: e.target.value } })
+                  }
+                >
+                  {targetInterfaces.map((iface) => (
+                    <option key={iface.interface_id} value={iface.interface_id}>
+                      {iface.name} — {iface.interface_id}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  style={f.inputReadOnly}
+                  value={comm.TargetInterface?.interface_id ?? ''}
+                  readOnly
+                  placeholder="No zone interfaces"
+                />
+              )}
             </div>
           )}
 

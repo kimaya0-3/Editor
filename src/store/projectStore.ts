@@ -3,6 +3,7 @@ import type {
   TraxSecurityZone,
   TraxSWComponent,
   TraxLogicalInterface,
+  TraxZoneInterface,
   TraxInterSWCommunication,
   TraxZoneCommunication,
   TraxNetworkFacingInterface,
@@ -103,6 +104,11 @@ interface ProjectState {
   updateNetworkInterface: (zone_id: string, interface_id: string, partial: Partial<TraxNetworkFacingInterface>) => void
   deleteNetworkInterface: (zone_id: string, interface_id: string) => void
 
+  // ── Zone interface mutations ─────────────────────────────────────────────
+  addZoneInterface:    (zone_id: string, iface: TraxZoneInterface) => void
+  updateZoneInterface: (zone_id: string, interface_id: string, partial: Partial<TraxZoneInterface>) => void
+  deleteZoneInterface: (zone_id: string, interface_id: string) => void
+
   // ── Host level interface mutations ────────────────────────────────────────
   addHostInterface:    (zone_id: string, iface: TraxHostLevelInterface) => void
   updateHostInterface: (zone_id: string, interface_id: string, partial: Partial<TraxHostLevelInterface>) => void
@@ -171,6 +177,14 @@ const makeZoneId = (): string => {
   return `SZ-${max + 1}`
 }
 
+const makeZoneInterfaceId = (): string => {
+  const zones = useProjectStore.getState().project?.SecurityZones ?? []
+  const max   = zones
+    .flatMap((z) => z.ZoneInterfaces ?? [])
+    .reduce((acc, iface) => Math.max(acc, extractNumber(iface.interface_id)), 0)
+  return `ZI-${max + 1}`
+}
+
 const makeComponentId = (): string => {
   const comps = useProjectStore.getState().project?.SWComponents ?? []
   const max   = comps.reduce((acc, c) => Math.max(acc, extractNumber(c.subUnit_id)), 0)
@@ -212,7 +226,7 @@ const makeCommId = (): string => {
   return `LC-${Math.max(maxComp, maxZone) + 1}`
 }
 
-export { makeZoneId, makeComponentId, makeInterfaceId, makeCommId }
+export { makeZoneId, makeZoneInterfaceId, makeComponentId, makeInterfaceId, makeCommId }
 
 // ─── Reconciliation ───────────────────────────────────────────────────────────
 
@@ -988,6 +1002,81 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             HostLevelInterfaces_Zone: (z.HostLevelInterfaces_Zone ?? []).filter(
               (iface) => iface.interface_id !== interface_id
             ),
+          }
+        ),
+      }
+
+      saveToStorage(newProject, s.diagramLayout)
+      return { ...pushHistory(s), project: newProject }
+    }),
+
+  // ── Zone interface mutations ─────────────────────────────────────────────
+
+  addZoneInterface: (zone_id, iface) =>
+    set((s) => {
+      if (!s.project) return s
+
+      const newProject = {
+        ...s.project,
+        SecurityZones: s.project.SecurityZones.map((z) =>
+          z.zone_id !== zone_id ? z : {
+            ...z,
+            ZoneInterfaces: [
+              ...(z.ZoneInterfaces ?? []),
+              {
+                ...iface,
+                ConnectedToSecurityZone: iface.ConnectedToSecurityZone ?? { zone_id },
+              },
+            ],
+          }
+        ),
+      }
+
+      saveToStorage(newProject, s.diagramLayout)
+      return { ...pushHistory(s), project: newProject }
+    }),
+
+  updateZoneInterface: (zone_id, interface_id, partial) =>
+    set((s) => {
+      if (!s.project) return s
+
+      const newProject = {
+        ...s.project,
+        SecurityZones: s.project.SecurityZones.map((z) =>
+          z.zone_id !== zone_id ? z : {
+            ...z,
+            ZoneInterfaces: (z.ZoneInterfaces ?? []).map((iface) =>
+              iface.interface_id === interface_id ? { ...iface, ...partial } : iface
+            ),
+          }
+        ),
+      }
+
+      saveToStorage(newProject, s.diagramLayout)
+      return { ...pushHistory(s), project: newProject }
+    }),
+
+  deleteZoneInterface: (zone_id, interface_id) =>
+    set((s) => {
+      if (!s.project) return s
+
+      const newProject = {
+        ...s.project,
+        SecurityZones: s.project.SecurityZones.map((z) =>
+          z.zone_id !== zone_id ? z : {
+            ...z,
+            ZoneInterfaces: (z.ZoneInterfaces ?? []).filter(
+              (iface) => iface.interface_id !== interface_id
+            ),
+            ZoneCommunications: (z.ZoneCommunications ?? []).map((comm) => ({
+              ...comm,
+              SourceInterface: comm.SourceInterface?.interface_id === interface_id
+                ? undefined
+                : comm.SourceInterface,
+              TargetInterface: comm.TargetInterface?.interface_id === interface_id
+                ? undefined
+                : comm.TargetInterface,
+            })),
           }
         ),
       }

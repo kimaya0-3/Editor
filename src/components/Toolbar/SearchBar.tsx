@@ -181,11 +181,13 @@ export const SearchBar = () => {
         if (commName.toLowerCase().includes(q) || commId.toLowerCase().includes(q)) {
           const sourceZoneId = comm.SourceZone?.zone_id ?? zone.zone_id
           const targetZoneId = comm.TargetZone?.zone_id ?? ''
+          const sourceIface   = comm.SourceInterface?.interface_id ? ` · ${comm.SourceInterface.interface_id}` : ''
+          const targetIface   = comm.TargetInterface?.interface_id ? ` · ${comm.TargetInterface.interface_id}` : ''
           out.push({
             id:            commId,
             kind:          'communication',
             label:         commName || commId,
-            subLabel:      `${commId} · ${sourceZoneId} → ${targetZoneId}`,
+            subLabel:      `${commId} · ${sourceZoneId}${sourceIface} → ${targetZoneId}${targetIface}`,
             nodeId:        commId,
             commKind:      'zone',
             sourceNodeId:  sourceZoneId,

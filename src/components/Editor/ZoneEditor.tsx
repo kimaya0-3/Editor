@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
-import { useProjectStore } from '../../store/projectStore'
+import { useProjectStore, makeZoneInterfaceId } from '../../store/projectStore'
 import type { TraxSecurityZone, TraxZoneExposure } from '../../types/index'
+import type { TraxZoneInterface, AbstractInterfaceType } from '../../types/index'
 
 interface ZoneEditorProps {
   zone:   TraxSecurityZone
@@ -36,6 +37,21 @@ const makeFieldStyles = (isDark: boolean) => ({
     outline:      'none',
     boxSizing:    'border-box' as const,
     transition:   'border-color 0.15s',
+  },
+
+  inputReadOnly: {
+    width:        '100%',
+    padding:      '7px 10px',
+    borderRadius: '7px',
+    border:       `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}`,
+    background:   isDark ? '#0f172a' : '#f8fafc',
+    color:        isDark ? '#e2e8f0' : '#1e293b',
+    fontSize:     '13px',
+    fontFamily:   'sans-serif',
+    outline:      'none',
+    boxSizing:    'border-box' as const,
+    opacity:      0.5,
+    cursor:       'not-allowed' as const,
   },
 
   textarea: {
@@ -92,6 +108,17 @@ const makeFieldStyles = (isDark: boolean) => ({
     borderBottom:  `1px solid ${isDark ? '#1e293b' : '#f1f5f9'}`,
     marginBottom:  '12px',
   },
+  addBtn: {
+    padding:      '7px 12px',
+    borderRadius: '7px',
+    border:       `1px dashed ${isDark ? '#334155' : '#cbd5e1'}`,
+    background:   'transparent',
+    color:        isDark ? '#475569' : '#94a3b8',
+    fontSize:     '12px',
+    cursor:       'pointer',
+    fontFamily:   'sans-serif',
+    width:        '100%',
+  },
 })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -114,10 +141,19 @@ const TYPE_COLOR: Record<ExposureType, { border: string; label: string }> = {
   Host:      { border: '#10b981', label: '#34d399' },
 }
 
+const INTERFACE_COLOR: Record<AbstractInterfaceType, { border: string; label: string }> = {
+  Network:   { border: '#3b82f6', label: '#60a5fa' },
+  Proximity: { border: '#8b5cf6', label: '#c084fc' },
+  Host:      { border: '#10b981', label: '#34d399' },
+}
+
 // ─── ZoneEditor ───────────────────────────────────────────────────────────────
 
 export const ZoneEditor = ({ zone, isDark }: ZoneEditorProps) => {
   const updateZone = useProjectStore((s) => s.updateZone)
+  const addZoneInterface = useProjectStore((s) => s.addZoneInterface)
+  const updateZoneInterface = useProjectStore((s) => s.updateZoneInterface)
+  const deleteZoneInterface = useProjectStore((s) => s.deleteZoneInterface)
   const f          = makeFieldStyles(isDark)
 
   const patch = useCallback(
@@ -165,6 +201,31 @@ export const ZoneEditor = ({ zone, isDark }: ZoneEditorProps) => {
       isStructuringBox: nextExposures.length === 0,
     })
   }
+
+  const patchZoneInterface = useCallback(
+    (interface_id: string, partial: Partial<TraxZoneInterface>) => {
+      updateZoneInterface(zone.zone_id, interface_id, partial)
+    },
+    [updateZoneInterface, zone.zone_id],
+  )
+
+  const addZoneInterfaceRow = useCallback(() => {
+    const defaultType: AbstractInterfaceType = zone.isHostZone
+      ? 'Host'
+      : zone.isProximityZone
+        ? 'Proximity'
+        : 'Network'
+
+    addZoneInterface(zone.zone_id, {
+      interface_id:           makeZoneInterfaceId(),
+      name:                   'New Zone Interface',
+      description:            '',
+      abstractInterfaceType:  defaultType,
+      specificExposureRating_I: 'NoRating',
+      isManagementInterface:  false,
+      ConnectedToSecurityZone: { zone_id: zone.zone_id },
+    })
+  }, [addZoneInterface, zone])
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -238,6 +299,28 @@ export const ZoneEditor = ({ zone, isDark }: ZoneEditorProps) => {
           />
           <span style={f.checkLabel}>External Zone</span>
         </label>
+      </div>
+
+      {/* ── Zone Interfaces ─────────────────────────────────────────── */}
+      <div>
+        <div style={f.sectionTitle}>Zone Interfaces ({zone.ZoneInterfaces?.length ?? 0})</div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {(zone.ZoneInterfaces ?? []).map((iface) => (
+            <ZoneInterfaceCard
+              key={iface.interface_id}
+              iface={iface}
+              isDark={isDark}
+              f={f}
+              onChange={(partial) => patchZoneInterface(iface.interface_id, partial)}
+              onDelete={() => deleteZoneInterface(zone.zone_id, iface.interface_id)}
+            />
+          ))}
+
+          <button style={f.addBtn} onClick={addZoneInterfaceRow}>
+            + Add Interface
+          </button>
+        </div>
       </div>
 
       {/* ── Zone Exposures ─────────────────────────────────────────────── */}
@@ -385,6 +468,123 @@ const ExposureCard = ({
 
         </div>
       )}
+    </div>
+  )
+}
+
+interface ZoneInterfaceCardProps {
+  iface: TraxZoneInterface
+  isDark: boolean
+  f: ReturnType<typeof makeFieldStyles>
+  onChange: (partial: Partial<TraxZoneInterface>) => void
+  onDelete: () => void
+}
+
+const ZoneInterfaceCard = ({ iface, isDark, f, onChange, onDelete }: ZoneInterfaceCardProps) => {
+  const colors = INTERFACE_COLOR[iface.abstractInterfaceType]
+
+  return (
+    <div style={{
+      borderRadius: '8px',
+      border:       `1px solid ${isDark ? colors.border + '55' : colors.border + '44'}`,
+      background:   isDark ? '#0b1120' : '#f8fafc',
+      overflow:     'hidden',
+    }}>
+      <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{
+          width:        '8px',
+          height:       '8px',
+          borderRadius: '50%',
+          background:   colors.border,
+          flexShrink:   0,
+        }} />
+
+        <input
+          value={iface.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Interface name"
+          style={{
+            flex:         1,
+            border:       'none',
+            outline:      'none',
+            background:   'transparent',
+            color:        isDark ? '#e2e8f0' : '#1e293b',
+            fontSize:     '12px',
+            fontWeight:   600,
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={onDelete}
+          style={{
+            border:       'none',
+            background:   'transparent',
+            color:        isDark ? '#94a3b8' : '#64748b',
+            cursor:       'pointer',
+            fontSize:     '12px',
+          }}
+        >
+          Delete
+        </button>
+      </div>
+
+      <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={f.wrapper}>
+          <label style={f.label}>Interface ID</label>
+          <input style={f.inputReadOnly} value={iface.interface_id} readOnly />
+        </div>
+
+        <div style={f.wrapper}>
+          <label style={f.label}>Type</label>
+          <select
+            style={f.select}
+            value={iface.abstractInterfaceType}
+            onChange={(e) => onChange({ abstractInterfaceType: e.target.value as AbstractInterfaceType })}
+          >
+            <option value="Network">Network</option>
+            <option value="Proximity">Proximity</option>
+            <option value="Host">Host</option>
+          </select>
+        </div>
+
+        <div style={f.wrapper}>
+          <label style={f.label}>Exposure Rating</label>
+          <select
+            style={f.select}
+            value={iface.specificExposureRating_I}
+            onChange={(e) =>
+              onChange({
+                specificExposureRating_I: e.target.value as TraxZoneInterface['specificExposureRating_I'],
+              })
+            }
+          >
+            {RATINGS.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <label style={f.checkRow}>
+          <input
+            type="checkbox"
+            checked={iface.isManagementInterface}
+            onChange={(e) => onChange({ isManagementInterface: e.target.checked })}
+            style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+          />
+          <span style={f.checkLabel}>Management Interface</span>
+        </label>
+
+        <div style={f.wrapper}>
+          <label style={f.label}>Description</label>
+          <textarea
+            style={{ ...f.textarea, minHeight: '52px' }}
+            value={iface.description ?? ''}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Optional description…"
+          />
+        </div>
+      </div>
     </div>
   )
 }
