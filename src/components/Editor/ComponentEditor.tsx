@@ -259,7 +259,7 @@ export const ComponentEditor = ({ component, isDark }: ComponentEditorProps) => 
       </div>
 
       {/* ── Interfaces ─────────────────────────────────────────────────── */}
-      {/* Note: TRA-X calls these "Interfaces" not "Logical Interfaces"    */}
+
       <div>
         <div style={f.sectionTitle}>
           Interfaces ({interfaces.length})
@@ -407,7 +407,7 @@ const InterfaceRow = ({ iface, isDark, f, onChange, onDelete }: InterfaceRowProp
       {/* ── Surface Type ───────────────────────────────────────────────── */}
       {/* Changing this auto-updates abstractInterfaceType                 */}
       <div style={f.wrapper}>
-        <label style={f.label}>Surface Type</label>
+        <label style={f.label}>Interface Type</label>
         <select
           style={f.select}
           value={iface.softwareAttackSurfaceType}

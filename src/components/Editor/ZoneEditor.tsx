@@ -162,6 +162,7 @@ export const ZoneEditor = ({ zone, isDark }: ZoneEditorProps) => {
       isNetworkZone:   nextExposures.some((e) => e.zoneExposureType === 'Network'),
       isProximityZone: nextExposures.some((e) => e.zoneExposureType === 'Proximity'),
       isHostZone:      nextExposures.some((e) => e.zoneExposureType === 'Host'),
+      isStructuringBox: nextExposures.length === 0,
     })
   }
 

@@ -64,7 +64,7 @@ export const EditorPanel = ({ width = 300 }: EditorPanelProps) => {
   const tokens       = tk(isDark)
   const [collapsed, setCollapsed] = useState(false)
   const hasSelection  = !!(zone || component || commResult)
-  const selectionKind = zone ? 'Zone' : component ? 'Component' : commResult ? 'Edge' : null
+  const selectionKind = zone ? 'Zone' : component ? 'Component' : commResult ? 'Communication' : null
 
   // ── Delete handler ────────────────────────────────────────────────────────
   const handleDelete = useCallback(() => {

@@ -292,8 +292,15 @@ export const communicationsToEdges = (
   const isAnimated = edgeStyle === 'animated'
   const rfType     = isAnimated ? 'smoothstep' : (edgeStyle ?? 'smoothstep')
 
-  const seenIds          = new Set<string>()
-  const sourceTargetSeen = new Set<string>()
+  const seenIds = new Set<string>()
+
+  const componentComms: Array<{
+    edgeId:      string
+    sourceId:    string
+    targetId:    string
+    label:       string
+    surfaceType: string
+  }> = []
 
   for (const comp of components) {
     for (const comm of comp.InterSWCommunications ?? []) {
@@ -302,28 +309,53 @@ export const communicationsToEdges = (
 
       if (!sourceId || !target || sourceId === target.compId) continue
 
-      const edgeId          = comm.communication_id
-      const sourceTargetKey = `${sourceId}→${target.compId}`
-
-      if (seenIds.has(edgeId))                   continue
-      if (sourceTargetSeen.has(sourceTargetKey)) continue
-
+      const edgeId = comm.communication_id
+      if (seenIds.has(edgeId)) continue
       seenIds.add(edgeId)
-      sourceTargetSeen.add(sourceTargetKey)
 
-      const edgeColor = interfaceTypeColor[target.surfaceType] ?? '#94a3b8'
+      componentComms.push({
+        edgeId,
+        sourceId,
+        targetId:    target.compId,
+        label:       comm.name ?? comm.communication_id,
+        surfaceType: target.surfaceType,
+      })
+    }
+  }
+
+  const pairBuckets = new Map<string, typeof componentComms>()
+  for (const comm of componentComms) {
+    const key = `${comm.sourceId}→${comm.targetId}`
+    const arr = pairBuckets.get(key)
+    if (arr) {
+      arr.push(comm)
+    } else {
+      pairBuckets.set(key, [comm])
+    }
+  }
+
+  for (const bucket of pairBuckets.values()) {
+    const total = bucket.length
+    for (let i = 0; i < bucket.length; i += 1) {
+      const comm = bucket[i]
+      const edgeColor      = interfaceTypeColor[comm.surfaceType] ?? '#94a3b8'
+      const centeredOffset = i - (total - 1) / 2
 
       edges.push({
-        id:       edgeId,
-        source:   sourceId,
-        target:   target.compId,
-        label:    comm.name ?? comm.communication_id,
+        id:       comm.edgeId,
+        source:   comm.sourceId,
+        target:   comm.targetId,
+        label:    comm.label,
         type:     rfType,
         animated: isAnimated,
         style: {
           stroke:      edgeColor,
           strokeWidth: 1,
           opacity:     0.55,
+        },
+        data: {
+          parallelOffset: centeredOffset,
+          parallelTotal:  total,
         },
         markerEnd: {
           type:   'arrowclosed' as const,

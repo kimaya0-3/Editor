@@ -61,20 +61,52 @@ export const HoverEdge = ({
   style,
   markerEnd,
   label,
+  data,
 }: EdgeProps) => {
   const [hovered, setHovered] = useState(false)
   const theme  = useProjectStore((s) => s.theme)
   const isDark = theme === 'dark'
 
+  const parallelOffset = typeof data?.parallelOffset === 'number'
+    ? data.parallelOffset
+    : 0
+
+  const parallelTotal = typeof data?.parallelTotal === 'number'
+    ? data.parallelTotal
+    : 1
+
+  const parallelPixels = parallelTotal > 1 ? parallelOffset * 24 : 0
+
+  const hasParallelOffset = parallelPixels !== 0
+
+  const makeParallelPath = (): [string, number, number] => {
+    const dx = targetX - sourceX
+    const dy = targetY - sourceY
+    const len = Math.hypot(dx, dy) || 1
+    const nx = -dy / len
+    const ny = dx / len
+
+    const cx = (sourceX + targetX) / 2 + nx * parallelPixels
+    const cy = (sourceY + targetY) / 2 + ny * parallelPixels
+
+    const labelX = (sourceX + (2 * cx) + targetX) / 4
+    const labelY = (sourceY + (2 * cy) + targetY) / 4
+    const path = `M ${sourceX},${sourceY} Q ${cx},${cy} ${targetX},${targetY}`
+
+    return [path, labelX, labelY]
+  }
+
   // Destructure all 5 elements — labelX/labelY are what we need for positioning
-  const [edgePath, labelX, labelY] = getPath(type, {
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  })
+  const [edgePath, labelX, labelY] = hasParallelOffset
+    ? makeParallelPath()
+    : getPath(type, {
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    })
 
   return (
     <>
