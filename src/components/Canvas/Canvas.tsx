@@ -116,7 +116,6 @@ const CanvasInner = () => {
       project.SWComponents  ?? [],
       settings.edgeStyle,
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, settings])
 
   // ── Local RF state ────────────────────────────────────────────────────────
@@ -153,6 +152,7 @@ const CanvasInner = () => {
       freshLayout.settings.edgeStyle,
     )
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNodes(freshNodes)
     setEdges(freshEdges)
 
@@ -183,6 +183,7 @@ const CanvasInner = () => {
 
   // ── Sync edges ────────────────────────────────────────────────────────────
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEdges(derivedEdges)
   }, [derivedEdges])
 

@@ -258,10 +258,16 @@ export const SearchBar = () => {
 
   const flatResults = grouped.flatMap((g) => g.items)
 
+  const getParentId = (node: unknown): string | undefined => {
+    if (!node || typeof node !== 'object') return undefined
+    const rec = node as Record<string, unknown>
+    if (typeof rec.parentId === 'string') return rec.parentId
+    if (typeof rec.parentNode === 'string') return rec.parentNode
+    return undefined
+  }
+
   // ── Navigate to result ─────────────────────────────────────────────────────
   const navigateTo = useCallback((result: SearchResult) => {
-    console.log('[SearchBar] navigateTo called', result.nodeId, result.kind)
-
     setQuery('')
     setOpen(false)
     setActiveIndex(-1)
@@ -294,13 +300,13 @@ export const SearchBar = () => {
           if (!node) return null
           let x        = node.position.x
           let y        = node.position.y
-          let parentId = (node as any).parentId ?? (node as any).parentNode
+          let parentId = getParentId(node)
           while (parentId) {
             const parent = allNodes.find((n) => n.id === parentId)
             if (!parent) break
             x       += parent.position.x
             y       += parent.position.y
-            parentId = (parent as any).parentId ?? (parent as any).parentNode
+            parentId = getParentId(parent)
           }
           const w = node.measured?.width  ?? node.width  ?? 220
           const h = node.measured?.height ?? node.height ?? 100
@@ -318,7 +324,6 @@ export const SearchBar = () => {
           ? (srcPos.cy + tgtPos.cy) / 2
           : (srcPos?.cy ?? tgtPos?.cy ?? 0)
 
-        console.log('[SearchBar] panning to comm midpoint', { panX, panY })
         setCenter(panX, panY, { zoom: Math.max(getZoom(), 1.2), duration: 600 })
         return
       }
@@ -332,14 +337,14 @@ export const SearchBar = () => {
 
       let absX     = rfNode.position.x
       let absY     = rfNode.position.y
-      let parentId = (rfNode as any).parentId ?? (rfNode as any).parentNode
+      let parentId = getParentId(rfNode)
 
       while (parentId) {
         const parent = allNodes.find((n) => n.id === parentId)
         if (!parent) break
         absX    += parent.position.x
         absY    += parent.position.y
-        parentId = (parent as any).parentId ?? (parent as any).parentNode
+        parentId = getParentId(parent)
       }
 
       const w  = rfNode.measured?.width  ?? rfNode.width  ?? 220
@@ -347,7 +352,6 @@ export const SearchBar = () => {
       const cx = absX + w / 2
       const cy = absY + h / 2
 
-      console.log('[SearchBar] panning to', result.nodeId, { absX, absY, cx, cy })
       setCenter(cx, cy, { zoom: Math.max(getZoom(), 1.2), duration: 600 })
     }, 80)
   }, [selectZone, selectComponent, selectCommunication, setCenter, getZoom, getNodes])
@@ -407,8 +411,6 @@ export const SearchBar = () => {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
-
-  useEffect(() => { setActiveIndex(-1) }, [query])
 
   // ── Tokens ─────────────────────────────────────────────────────────────────
   const bg          = isDark ? '#111827' : '#ffffff'
@@ -517,7 +519,6 @@ export const SearchBar = () => {
                       onMouseDown={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        console.log('[SearchBar] button mousedown', result.id)
                         navigateTo(result)
                       }}
                       onMouseEnter={() => setActiveIndex(thisIdx)}
@@ -642,7 +643,11 @@ export const SearchBar = () => {
             type="text"
             value={query}
             placeholder="Search zones, components, interfaces…"
-            onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setActiveIndex(-1)
+              setOpen(true)
+            }}
             onFocus={() => { setFocused(true); if (query.trim()) setOpen(true) }}
             onBlur={(e) => {
               const related = e.relatedTarget as Node | null
@@ -678,6 +683,7 @@ export const SearchBar = () => {
                 e.preventDefault()
                 e.stopPropagation()
                 setQuery('')
+                setActiveIndex(-1)
                 setOpen(false)
                 inputRef.current?.focus()
               }}

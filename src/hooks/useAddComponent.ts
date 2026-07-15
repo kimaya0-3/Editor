@@ -2,14 +2,12 @@ import { useCallback } from 'react'
 import {
   useProjectStore,
   makeComponentId,
-  makeInterfaceId,
 } from '../store/projectStore'
 import type { TraxSWComponent } from '../types/index'
 import type { Node } from '@xyflow/react'
 
 export const useAddComponent = () => {
   const addComponent  = useProjectStore((s) => s.addComponent)
-  const setEditorMode = useProjectStore((s) => s.setEditorMode)
 
   // clickedNode  = the zoneNode the user clicked on
   // clickPos     = flow-space position of the click (relative to canvas)
@@ -20,7 +18,6 @@ export const useAddComponent = () => {
 
       const zoneId  = clickedNode.id
       const compId  = makeComponentId()
-      const ifaceId = makeInterfaceId(compId)
 
       // Component position is RELATIVE to the parent zone node
       const relX = clickPos.x - (clickedNode.position?.x ?? 0)
@@ -48,6 +45,6 @@ export const useAddComponent = () => {
 
       // Stay in addComponent mode — user may want to add more
     },
-    [addComponent, setEditorMode],
+    [addComponent],
   )
 }

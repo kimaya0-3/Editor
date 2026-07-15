@@ -1,6 +1,5 @@
 import { useCallback }     from 'react'
 import { useProjectStore } from '../store/projectStore'
-import { useReactFlow }    from '@xyflow/react'
 import { toPng, toJpeg }   from 'html-to-image'
 
 export const useExport = () => {
@@ -8,7 +7,6 @@ export const useExport = () => {
   const storeExportTraxJson = useProjectStore((s) => s.exportTraxJson)
   const project             = useProjectStore((s) => s.project)
   const theme               = useProjectStore((s) => s.theme)
-  const { getViewport }     = useReactFlow()
 
   // ── Full export (project + layout sidecar) — Toolbar ─────────────────────
   const exportJson = useCallback(() => {
@@ -44,7 +42,7 @@ export const useExport = () => {
     } catch (e) {
       console.error('[useExport] Image export failed:', e)
     }
-  }, [project, theme, getViewport])
+  }, [project, theme])
 
   return { exportJson, exportTraxJson, exportImage }
 }

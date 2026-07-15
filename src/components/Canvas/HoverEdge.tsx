@@ -75,38 +75,38 @@ export const HoverEdge = ({
     ? data.parallelTotal
     : 1
 
-  const parallelPixels = parallelTotal > 1 ? parallelOffset * 24 : 0
+  const parallelPixels = parallelTotal > 1 ? parallelOffset * 10 : 0
 
-  const hasParallelOffset = parallelPixels !== 0
+  const getOffsetPathArgs = (): PathArgs => {
+    if (parallelPixels === 0) {
+      return {
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+      }
+    }
 
-  const makeParallelPath = (): [string, number, number] => {
     const dx = targetX - sourceX
     const dy = targetY - sourceY
     const len = Math.hypot(dx, dy) || 1
     const nx = -dy / len
     const ny = dx / len
 
-    const cx = (sourceX + targetX) / 2 + nx * parallelPixels
-    const cy = (sourceY + targetY) / 2 + ny * parallelPixels
-
-    const labelX = (sourceX + (2 * cx) + targetX) / 4
-    const labelY = (sourceY + (2 * cy) + targetY) / 4
-    const path = `M ${sourceX},${sourceY} Q ${cx},${cy} ${targetX},${targetY}`
-
-    return [path, labelX, labelY]
+    return {
+      sourceX: sourceX + nx * parallelPixels,
+      sourceY: sourceY + ny * parallelPixels,
+      sourcePosition,
+      targetX: targetX + nx * parallelPixels,
+      targetY: targetY + ny * parallelPixels,
+      targetPosition,
+    }
   }
 
   // Destructure all 5 elements — labelX/labelY are what we need for positioning
-  const [edgePath, labelX, labelY] = hasParallelOffset
-    ? makeParallelPath()
-    : getPath(type, {
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    })
+  const [edgePath, labelX, labelY] = getPath(type, getOffsetPathArgs())
 
   return (
     <>

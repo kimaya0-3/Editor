@@ -217,15 +217,6 @@ const MonoValue = ({ children, isDark }: { children: React.ReactNode; isDark: bo
   </span>
 )
 
-const Divider = ({ isDark }: { isDark: boolean }) => (
-  <div style={{
-    height:     '1px',
-    background: t(isDark).border,
-    margin:     '0 20px',
-    flexShrink: 0,
-  }} />
-)
-
 // ─── Panel shell ──────────────────────────────────────────────────────────────
 
 const PanelShell = ({

@@ -292,6 +292,7 @@ const ExportDropdown = ({
   const [open,    setOpen]    = useState(false)
   const [hovered, setHovered] = useState(false)
   const wrapperRef            = useRef<HTMLDivElement>(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 46, left: 0 })
 
   // ── Close on outside click ─────────────────────────────────────────────────
   useEffect(() => {
@@ -303,6 +304,25 @@ const ExportDropdown = ({
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+
+    const updatePos = () => {
+      const rect = wrapperRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left })
+    }
+
+    updatePos()
+    window.addEventListener('scroll', updatePos, true)
+    window.addEventListener('resize', updatePos)
+
+    return () => {
+      window.removeEventListener('scroll', updatePos, true)
+      window.removeEventListener('resize', updatePos)
+    }
   }, [open])
 
   const getBg = () => {
@@ -401,15 +421,9 @@ const ExportDropdown = ({
       {/* ── Dropdown panel ──────────────────────────────────────────────── */}
       {open && (
         <div style={{
-          position:      'fixed',                         // ← was 'absolute'
-          top:           (() => {                         // ← calculate from DOM
-            const rect = wrapperRef.current?.getBoundingClientRect()
-            return rect ? `${rect.bottom + 6}px` : '46px'
-          })(),
-          left:          (() => {
-            const rect = wrapperRef.current?.getBoundingClientRect()
-            return rect ? `${rect.left}px` : 'auto'
-          })(),
+          position:      'fixed',
+          top:           `${dropdownPos.top}px`,
+          left:          `${dropdownPos.left}px`,
           minWidth:      '190px',
           background:    isDark ? '#0f172a' : '#ffffff',
           border:        `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}`,
@@ -417,7 +431,7 @@ const ExportDropdown = ({
           boxShadow:     isDark
             ? '0 8px 32px rgba(0,0,0,0.6)'
             : '0 8px 32px rgba(0,0,0,0.12)',
-          zIndex:        999999,                          // ← bumped up
+          zIndex:        999999,
           padding:       '6px',
           display:       'flex',
           flexDirection: 'column',

@@ -5,7 +5,7 @@ import type { ZoneNodeData } from '../../utils/transformers'
 
 type ZoneNodeType = Node<ZoneNodeData, 'zoneNode'>
 
-export const ZoneNode = ({ data, selected }: NodeProps<ZoneNodeType>) => {
+export const ZoneNode = ({ data }: NodeProps<ZoneNodeType>) => {
   const theme          = useProjectStore((s) => s.theme)
   const selectedZoneId = useProjectStore((s) => s.selectedZoneId)
 

@@ -186,9 +186,6 @@ export const runLayout = (
   zones:      TraxSecurityZone[],
   components: TraxSWComponent[],
 ): PositionMap => {
-
-  console.log('[runLayout] algorithm received:', algorithm)
-
   switch (algorithm) {
     case 'horizontal': return horizontalLayout(zones, components)   
     default:           return verticalLayout(zones, components)     

@@ -455,9 +455,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         const newLayout: DiagramLayout = {
           version:  reconciled.version  ?? s.diagramLayout.version,
           nodes:    reconciled.nodes,
-          edges:    reconciled.edges.length > 0
-                      ? reconciled.edges
-                      : s.diagramLayout.edges,
+          edges:    reconciled.edges,
           settings: reconciled.settings ?? s.diagramLayout.settings,
         }
 
@@ -642,9 +640,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
       const newProject = {
         ...s.project,
-        SecurityZones: s.project.SecurityZones.map((z) =>
-          z.zone_id === zone_id ? { ...z, ...partial } : z
-        ),
+        SecurityZones: s.project.SecurityZones.map((z) => {
+          if (z.zone_id !== zone_id) return z
+
+          const merged = { ...z, ...partial }
+          const exposures = merged.ZoneExposures ?? []
+
+          return {
+            ...merged,
+            isNetworkZone: exposures.some((e) => e.zoneExposureType === 'Network'),
+            isProximityZone: exposures.some((e) => e.zoneExposureType === 'Proximity'),
+            isHostZone: exposures.some((e) => e.zoneExposureType === 'Host'),
+            isStructuringBox: exposures.length === 0,
+          }
+        }),
       }
 
       saveToStorage(newProject, s.diagramLayout)
@@ -1047,6 +1056,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => {
       if (!s.project) return s
 
+      const hasComm = s.project.SWComponents.some((c) =>
+        (c.InterSWCommunications ?? []).some((cm) => cm.communication_id === comm_id)
+      )
+      const hasEdge = s.diagramLayout.edges.some((e) => e.id === comm_id)
+      const wasSelected = s.selectedCommunicationId === comm_id
+      if (!hasComm && !hasEdge && !wasSelected) return s
+
       const newProject = {
         ...s.project,
         SWComponents: s.project.SWComponents.map((c) => ({
@@ -1188,6 +1204,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   deleteZoneCommunication: (comm_id) =>
     set((s) => {
       if (!s.project) return s
+
+      const hasComm = s.project.SecurityZones.some((z) =>
+        (z.ZoneCommunications ?? []).some((cm) => cm.communication_id === comm_id)
+      )
+      const hasEdge = s.diagramLayout.edges.some((e) => e.id === comm_id)
+      const wasSelected = s.selectedCommunicationId === comm_id
+      if (!hasComm && !hasEdge && !wasSelected) return s
 
       const newProject = {
         ...s.project,
@@ -1404,6 +1427,6 @@ export const useCommunicationSource = (comm_id: string) => {
 export const useCanUndo = () => useProjectStore((s) => s.past.length > 0)
 export const useCanRedo = () => useProjectStore((s) => s.future.length > 0)
 
-if (typeof window !== 'undefined') {
-  (window as any).__store = useProjectStore
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
+  ;(window as Window & { __store?: typeof useProjectStore }).__store = useProjectStore
 }

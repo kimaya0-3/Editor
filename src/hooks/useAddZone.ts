@@ -8,7 +8,6 @@ import type { TraxSecurityZone } from '../types/index'
 
 export const useAddZone = () => {
   const addZone      = useProjectStore((s) => s.addZone)
-  const setEditorMode = useProjectStore((s) => s.setEditorMode)
   const { screenToFlowPosition } = useReactFlow()
 
   return useCallback(
@@ -29,10 +28,6 @@ export const useAddZone = () => {
         isVisible:         true,
         isTopSecurityZone: false,
         ZoneExposures:     [],
-        TypeOf: {
-          name: 'General Host Zone',
-          type: 'Host',
-        },
       }
 
       addZone(zone, {
@@ -46,6 +41,6 @@ export const useAddZone = () => {
 
   
     },
-    [addZone, setEditorMode, screenToFlowPosition],
+    [addZone, screenToFlowPosition],
   )
 }
