@@ -1,7 +1,5 @@
 // ============================================================
 // TRA-X COMPLETE TYPE SYSTEM
-// Derived from real TRA-X JSON exports (JSON_VERSION 2)
-// Covers: SSM system overview + SoCoSi nested zones samples
 // ============================================================
 
 // ============================================================
