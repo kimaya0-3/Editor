@@ -335,9 +335,10 @@ const CanvasInner = () => {
   // ── onConnect — create immediately, no modal ──────────────────────────────
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (editorMode !== 'addEdge') return
       handleAddEdge(connection)
-      setEditorMode('idle')
+      if (editorMode === 'addEdge') {
+        setEditorMode('idle')
+      }
     },
     [editorMode, handleAddEdge, setEditorMode],
   )
@@ -378,7 +379,7 @@ const CanvasInner = () => {
           nodeOrigin={[0, 0]}
           nodesDraggable={true}
           nodeDragThreshold={1}
-          nodesConnectable={editorMode === 'addEdge'}
+          nodesConnectable={true}
           elementsSelectable={true}
           colorMode={isDark ? 'dark' : 'light'}
         >
