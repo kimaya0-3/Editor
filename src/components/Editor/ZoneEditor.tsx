@@ -287,20 +287,6 @@ export const ZoneEditor = ({ zone, isDark }: ZoneEditorProps) => {
         </div>
       </div>
 
-      {/* ── Settings ───────────────────────────────────────────────────── */}
-      <div>
-        <div style={f.sectionTitle}>Settings</div>
-        <label style={f.checkRow}>
-          <input
-            type="checkbox"
-            checked={!!zone.external}
-            onChange={(e) => patch({ external: e.target.checked })}
-            style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-          />
-          <span style={f.checkLabel}>External Zone</span>
-        </label>
-      </div>
-
       {/* ── Zone Interfaces ─────────────────────────────────────────── */}
       <div>
         <div style={f.sectionTitle}>Zone Interfaces ({zone.ZoneInterfaces?.length ?? 0})</div>
