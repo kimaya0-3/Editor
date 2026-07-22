@@ -148,7 +148,7 @@ interface ProjectState {
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const defaultSettings: CanvasSettings = {
-  layoutAlgorithm: 'horizontal',
+  layoutAlgorithm: 'vertical',
   edgeStyle:       'default',
 }
 
@@ -182,7 +182,7 @@ const makeZoneInterfaceId = (): string => {
   const max   = zones
     .flatMap((z) => z.ZoneInterfaces ?? [])
     .reduce((acc, iface) => Math.max(acc, extractNumber(iface.interface_id)), 0)
-  return `ZI-${max + 1}`
+  return `LI-${max + 1}`
 }
 
 const makeComponentId = (): string => {
@@ -864,20 +864,65 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => {
       if (!s.project) return s
 
+      const targetComp = s.project.SWComponents.find((c) => c.subUnit_id === subUnit_id)
+      const remainingTargetInterfaces = (targetComp?.LogicalInterfaces ?? []).filter(
+        (li) => li.interface_id !== interface_id
+      )
+      const fallbackTargetInterfaceId = remainingTargetInterfaces[0]?.interface_id
+
+      const deletedCommIds = new Set<string>()
+
       const newProject = {
         ...s.project,
-        SWComponents: s.project.SWComponents.map((c) =>
-          c.subUnit_id !== subUnit_id ? c : {
+        SWComponents: s.project.SWComponents.map((c) => {
+          const nextInterfaces = c.subUnit_id !== subUnit_id
+            ? (c.LogicalInterfaces ?? [])
+            : (c.LogicalInterfaces ?? []).filter((li) => li.interface_id !== interface_id)
+
+          const nextComms = (c.InterSWCommunications ?? []).flatMap((comm) => {
+            const targetDeleted = comm.TargetInterface?.interface_id === interface_id
+            const sourceDeleted = comm.SourceInterface?.interface_id === interface_id
+
+            if (!targetDeleted && !sourceDeleted) return [comm]
+
+            if (targetDeleted && !fallbackTargetInterfaceId) {
+              deletedCommIds.add(comm.communication_id)
+              return []
+            }
+
+            return [{
+              ...comm,
+              TargetInterface: targetDeleted
+                ? { interface_id: fallbackTargetInterfaceId! }
+                : comm.TargetInterface,
+              SourceInterface: sourceDeleted
+                ? undefined
+                : comm.SourceInterface,
+            }]
+          })
+
+          return {
             ...c,
-            LogicalInterfaces: (c.LogicalInterfaces ?? []).filter(
-              (li) => li.interface_id !== interface_id
-            ),
+            LogicalInterfaces: nextInterfaces,
+            InterSWCommunications: nextComms,
           }
-        ),
+        }),
       }
 
-      saveToStorage(newProject, s.diagramLayout)
-      return { ...pushHistory(s), project: newProject }
+      const newLayout = {
+        ...s.diagramLayout,
+        edges: s.diagramLayout.edges.filter((e) => !deletedCommIds.has(e.id)),
+      }
+
+      saveToStorage(newProject, newLayout)
+      return {
+        ...pushHistory(s),
+        project:                 newProject,
+        diagramLayout:           newLayout,
+        selectedCommunicationId: deletedCommIds.has(s.selectedCommunicationId ?? '')
+          ? null
+          : s.selectedCommunicationId,
+      }
     }),
 
   // ── Network facing interface mutations ────────────────────────────────────
@@ -1186,18 +1231,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       if (!s.project) return s
 
       const newComponents = s.project.SWComponents.map((c) => {
-        if (stub && c.subUnit_id === targetId) {
-          return {
-            ...c,
-            LogicalInterfaces: [...(c.LogicalInterfaces ?? []), stub],
-          }
-        }
         if (c.subUnit_id === sourceId) {
           return {
             ...c,
             InterSWCommunications: [
               ...(c.InterSWCommunications ?? []),
-              comm,
+              {
+                ...comm,
+                // New component communication starts with no source interface selected.
+                SourceInterface: undefined,
+              },
             ],
           }
         }

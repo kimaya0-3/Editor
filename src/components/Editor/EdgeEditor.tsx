@@ -139,6 +139,53 @@ const ComponentCommEditor = ({
   const project             = useProjectStore((s) => s.project)
 
   const allComponents = project?.SWComponents ?? []
+  const ownerComponentId = useMemo(() => {
+    if (!project) return ''
+    return project.SWComponents.find((c) =>
+      (c.InterSWCommunications ?? []).some((cm) => cm.communication_id === comm.communication_id)
+    )?.subUnit_id ?? ''
+  }, [project, comm.communication_id])
+
+  const currentSourceComponentId = comm.SourceComponent?.subUnit_id ?? ownerComponentId
+
+  const sourceSelectionOptions = useMemo(() => {
+    const currentSourceComponent = allComponents.find(
+      (c) => c.subUnit_id === currentSourceComponentId
+    )
+
+    const sourceComponent = currentSourceComponent ?? allComponents[0]
+    if (!sourceComponent) return []
+
+    const sourceLabel = sourceComponent.name?.trim() || sourceComponent.subUnit_id
+
+    const base = [{
+      value: `${sourceComponent.subUnit_id}::none`,
+      label: sourceLabel,
+    }]
+
+    const networkInterfaces = (sourceComponent.LogicalInterfaces ?? []).filter(
+      (iface) => iface.abstractInterfaceType === 'Network'
+    )
+
+    const withInterfaces = networkInterfaces.map((iface) => ({
+      value: `${sourceComponent.subUnit_id}::${iface.interface_id}`,
+      label: `${sourceLabel} - ${iface.name}`,
+    }))
+
+    return [...base, ...withInterfaces]
+  }, [allComponents, currentSourceComponentId])
+
+  const rawSourceSelectionValue = `${currentSourceComponentId}::${comm.SourceInterface?.interface_id ?? 'none'}`
+  const fallbackPlainSourceValue = sourceSelectionOptions.find(
+    (o) => o.value === `${currentSourceComponentId}::none`
+  )?.value
+    ?? sourceSelectionOptions.find((o) => o.value.endsWith('::none'))?.value
+    ?? sourceSelectionOptions[0]?.value
+    ?? ''
+
+  const sourceSelectionValue = sourceSelectionOptions.some((o) => o.value === rawSourceSelectionValue)
+    ? rawSourceSelectionValue
+    : fallbackPlainSourceValue
 
   // Find the component that owns the TargetInterface
   const targetComp = useMemo(() => {
@@ -177,20 +224,26 @@ const ComponentCommEditor = ({
             />
           </div>
 
-          {/* Source Component — editable dropdown */}
-          {comm.SourceComponent && (
+          {/* Source Component / Interface — editable dropdown */}
+          {sourceSelectionOptions.length > 0 && (
             <div style={f.wrapper}>
-              <label style={f.label}>Source Component</label>
+              <label style={f.label}>Source</label>
               <select
                 style={f.select}
-                value={comm.SourceComponent.subUnit_id}
-                onChange={(e) =>
-                  patch({ SourceComponent: { subUnit_id: e.target.value } })
-                }
+                value={sourceSelectionValue}
+                onChange={(e) => {
+                  const [subUnitId, interfaceId] = e.target.value.split('::')
+                  patch({
+                    SourceComponent: { subUnit_id: subUnitId },
+                    SourceInterface: interfaceId && interfaceId !== 'none'
+                      ? { interface_id: interfaceId }
+                      : undefined,
+                  })
+                }}
               >
-                {allComponents.map((c) => (
-                  <option key={c.subUnit_id} value={c.subUnit_id}>
-                    {c.name}
+                {sourceSelectionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -211,7 +264,7 @@ const ComponentCommEditor = ({
                 >
                   {targetInterfaces.map((iface) => (
                     <option key={iface.interface_id} value={iface.interface_id}>
-                      {iface.name} — {iface.interface_id}
+                      {iface.name} - {iface.interface_id}
                     </option>
                   ))}
                 </select>
@@ -423,7 +476,7 @@ const ZoneCommEditor = ({
                 >
                   {sourceInterfaces.map((iface) => (
                     <option key={iface.interface_id} value={iface.interface_id}>
-                      {iface.name} — {iface.interface_id}
+                      {iface.name} - {iface.interface_id}
                     </option>
                   ))}
                 </select>
@@ -471,7 +524,7 @@ const ZoneCommEditor = ({
                 >
                   {targetInterfaces.map((iface) => (
                     <option key={iface.interface_id} value={iface.interface_id}>
-                      {iface.name} — {iface.interface_id}
+                      {iface.name} - {iface.interface_id}
                     </option>
                   ))}
                 </select>

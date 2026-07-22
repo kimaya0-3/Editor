@@ -13,7 +13,9 @@ type ComponentNodeType = Node<ComponentNodeData, 'componentNode'>
 export const ComponentNode = ({ data, selected }: NodeProps<ComponentNodeType>) => {
   const theme      = useProjectStore((s) => s.theme)
   const selectedId = useProjectStore((s) => s.selectedComponentId)
+  const editorMode = useProjectStore((s) => s.editorMode)
   const isDark     = theme === 'dark'
+  const showConnectionCues = editorMode === 'addEdge'
 
   const isInScope  = data.scope === 'In_Scope'
   const isSelected = selectedId === data.subUnit_id
@@ -39,10 +41,30 @@ export const ComponentNode = ({ data, selected }: NodeProps<ComponentNodeType>) 
         handleStyle={{ borderColor: '#3b82f6', background: '#1d4ed8' }}
       />
 
-      <Handle type="target" position={Position.Top}    style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
-      <Handle type="target" position={Position.Left}   style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Right}  style={{ opacity: 0 }} />
+      <ConnectionCue
+        show={showConnectionCues}
+        type="target"
+        position={Position.Top}
+        side="top"
+      />
+      <ConnectionCue
+        show={showConnectionCues}
+        type="source"
+        position={Position.Bottom}
+        side="bottom"
+      />
+      <ConnectionCue
+        show={showConnectionCues}
+        type="target"
+        position={Position.Left}
+        side="left"
+      />
+      <ConnectionCue
+        show={showConnectionCues}
+        type="source"
+        position={Position.Right}
+        side="right"
+      />
 
       <div
         style={{
@@ -66,6 +88,7 @@ export const ComponentNode = ({ data, selected }: NodeProps<ComponentNodeType>) 
           transition:    'border 0.15s, box-shadow 0.15s',
           display:       'flex',
           flexDirection: 'column',
+          position:      'relative',
         }}
       >
         {/* ── Scope badge ─────────────────────────────────────────────────── */}
@@ -151,6 +174,74 @@ export const ComponentNode = ({ data, selected }: NodeProps<ComponentNodeType>) 
           </div>
         )}
       </div>
+    </>
+  )
+}
+
+const ConnectionCue = ({
+  show,
+  type,
+  position,
+  side,
+}: {
+  show: boolean
+  type: 'source' | 'target'
+  position: Position
+  side: 'top' | 'bottom' | 'left' | 'right'
+}) => {
+  if (!show) {
+    return <Handle type={type} position={position} style={{ opacity: 0 }} />
+  }
+
+  const commonBadgeStyle: React.CSSProperties = {
+    position:        'absolute',
+    width:           '4px',
+    height:          '4px',
+    borderRadius:    '999px',
+    background:      'rgba(37,99,235,0.9)',
+    color:           '#ffffff',
+    fontSize:        '4px',
+    fontWeight:      700,
+    lineHeight:      '4px',
+    textAlign:       'center',
+    boxShadow:       '0 1px 2px rgba(37,99,235,0.12)',
+    pointerEvents:   'none',
+    zIndex:          3,
+  }
+
+  const badgePosition: React.CSSProperties =
+    side === 'top'
+      ? { top: '-9px', left: '50%', transform: 'translateX(-50%)' }
+      : side === 'bottom'
+        ? { bottom: '-9px', left: '50%', transform: 'translateX(-50%)' }
+        : side === 'left'
+          ? { left: '-9px', top: '50%', transform: 'translateY(-50%)' }
+          : { right: '-9px', top: '50%', transform: 'translateY(-50%)' }
+
+  const handleStyle: React.CSSProperties = {
+    width:        side === 'left' || side === 'right' ? '16px' : '100%',
+    height:       side === 'top' || side === 'bottom' ? '16px' : '100%',
+    borderRadius: '999px',
+    background:   'rgba(37,99,235,0.02)',
+    border:       '1px solid rgba(37,99,235,0.06)',
+    boxShadow:    '0 0 0 1px rgba(37,99,235,0.02)',
+    opacity:      1,
+    zIndex:       4,
+  }
+
+  const stripStyle: React.CSSProperties =
+    side === 'top'
+      ? { top: '-6px', left: 0, transform: 'none' }
+      : side === 'bottom'
+        ? { bottom: '-6px', left: 0, transform: 'none' }
+        : side === 'left'
+          ? { left: '-6px', top: 0, transform: 'none' }
+          : { right: '-6px', top: 0, transform: 'none' }
+
+  return (
+    <>
+      <Handle type={type} position={position} style={{ ...handleStyle, ...stripStyle }} />
+      <div style={{ ...commonBadgeStyle, ...badgePosition }}>+</div>
     </>
   )
 }

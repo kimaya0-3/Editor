@@ -18,6 +18,8 @@ export interface ZoneNodeData {
   security_rating?:  string
   exposure_count:    number
   child_count:       number
+  interface_count:   number
+  interface_types:   string[]
   zone:              TraxSecurityZone
   [key: string]:     unknown
 }
@@ -51,6 +53,7 @@ export interface ComponentNodeData {
 const COMP_W       = 220
 const ZONE_PADDING = 40
 const ZONE_HEADER  = 50
+const ZONE_CHILD_Y = ZONE_HEADER + ZONE_PADDING + 24
 const ZONE_GAP     = 24
 const ZONE_MIN_W   = 300
 const ZONE_MIN_H   = 200
@@ -188,6 +191,10 @@ export const buildNodes = (
         security_rating:  deriveRating(zone),
         exposure_count:   zone.ZoneExposures?.length ?? 0,
         child_count:      childCount,
+        interface_count:  zone.ZoneInterfaces?.length ?? 0,
+        interface_types:  Array.from(
+          new Set((zone.ZoneInterfaces ?? []).map((iface) => iface.abstractInterfaceType))
+        ),
         zone,
       } satisfies ZoneNodeData,
     })
@@ -206,7 +213,7 @@ export const buildNodes = (
       const savedComp        = savedMap.get(comp.subUnit_id)
       const compCalc         = calculatedPositions[comp.subUnit_id] ?? {
         x: cursorX,
-        y: ZONE_HEADER + ZONE_PADDING,
+        y: ZONE_CHILD_Y,
       }
       const { x: cx, y: cy } = resolvePosition(savedComp, compCalc)
       const interfaces        = mapInterfaces(comp)
@@ -348,6 +355,7 @@ export const communicationsToEdges = (
         label:    comm.label,
         type:     rfType,
         animated: isAnimated,
+        zIndex:   10,
         style: {
           stroke:      edgeColor,
           strokeWidth: 1,
@@ -367,6 +375,13 @@ export const communicationsToEdges = (
     }
   }
 
+  const zoneBuckets = new Map<string, Array<{
+    edgeId: string
+    sourceId: string
+    targetId: string
+    label: string
+  }>>()
+
   for (const zone of zones) {
     for (const comm of zone.ZoneCommunications ?? []) {
       if (seenIds.has(comm.communication_id)) continue
@@ -375,21 +390,50 @@ export const communicationsToEdges = (
       const sourceId = comm.SourceZone?.zone_id ?? zone.zone_id
       const targetId = comm.TargetZone.zone_id
 
+      const key = `${sourceId}→${targetId}`
+      const bucket = zoneBuckets.get(key)
+      const item = {
+        edgeId:  comm.communication_id,
+        sourceId,
+        targetId,
+        label:   comm.name ?? comm.communication_id,
+      }
+
+      if (bucket) {
+        bucket.push(item)
+      } else {
+        zoneBuckets.set(key, [item])
+      }
+    }
+  }
+
+  for (const bucket of zoneBuckets.values()) {
+    const total = bucket.length
+    for (let i = 0; i < bucket.length; i += 1) {
+      const comm = bucket[i]
+      const edgeColor      = '#a78bfa'
+      const centeredOffset = i - (total - 1) / 2
+
       edges.push({
-        id:       comm.communication_id,
-        source:   sourceId,
-        target:   targetId,
-        label:    comm.name ?? comm.communication_id,
+        id:       comm.edgeId,
+        source:   comm.sourceId,
+        target:   comm.targetId,
+        label:    comm.label,
         type:     rfType,
         animated: isAnimated,
+        zIndex:   10,
         style: {
-          stroke:      '#a78bfa',
+          stroke:      edgeColor,
           strokeWidth: 1.5,
           opacity:     0.65,
         },
+        data: {
+          parallelOffset: centeredOffset,
+          parallelTotal:  total,
+        },
         markerEnd: {
           type:   'arrowclosed' as const,
-          color:  '#a78bfa',
+          color:  edgeColor,
           width:  12,
           height: 12,
         },

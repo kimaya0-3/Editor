@@ -356,6 +356,10 @@ export interface TraxTargetInterface {
   interface_id: string
 }
 
+export interface TraxSourceInterface {
+  interface_id: string
+}
+
 export interface TraxSourceComponent {
   subUnit_id: string
 }
@@ -371,6 +375,7 @@ export interface TraxInterSWCommunication {
   viaUntrustedZones:       boolean
   message?:                string
   TargetInterface:         TraxTargetInterface
+  SourceInterface?:        TraxSourceInterface
   SourceComponent?:        TraxSourceComponent
   ProtocolType?:           TraxProtocolType
 }

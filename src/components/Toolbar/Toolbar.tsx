@@ -460,6 +460,194 @@ const ExportDropdown = ({
   )
 }
 
+// ─── EdgeStyleDropdown ───────────────────────────────────────────────────────
+
+interface EdgeStyleDropdownProps {
+  isDark: boolean
+  disabled: boolean
+  value: CanvasSettings['edgeStyle']
+  onChange: (style: CanvasSettings['edgeStyle']) => void
+}
+
+const EdgeStyleDropdown = ({ isDark, disabled, value, onChange }: EdgeStyleDropdownProps) => {
+  const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 46, left: 0 })
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+
+    const updatePos = () => {
+      const rect = wrapperRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left })
+    }
+
+    updatePos()
+    window.addEventListener('scroll', updatePos, true)
+    window.addEventListener('resize', updatePos)
+
+    return () => {
+      window.removeEventListener('scroll', updatePos, true)
+      window.removeEventListener('resize', updatePos)
+    }
+  }, [open])
+
+  const getBg = () => {
+    if (hovered) return isDark ? '#1e293b' : '#f1f5f9'
+    if (open) return isDark ? '#1e3a5f' : '#dbeafe'
+    return 'transparent'
+  }
+
+  const getBorder = () => {
+    if (open) return isDark ? '#3b82f6' : '#2563eb'
+    if (hovered) return isDark ? '#334155' : '#e2e8f0'
+    return 'transparent'
+  }
+
+  const getColor = () => {
+    if (open) return isDark ? '#60a5fa' : '#1d4ed8'
+    return isDark ? '#94a3b8' : '#64748b'
+  }
+
+  const selectedLabel = {
+    default: 'Bezier',
+    smoothstep: 'Smooth',
+    straight: 'Straight',
+    step: 'Step',
+    animated: 'Animated',
+  }[value]
+
+  const items: Array<{
+    label: string
+    icon: React.ReactNode
+    value: CanvasSettings['edgeStyle']
+    description: string
+  }> = [
+    { label: 'Bezier', icon: <Icons.Bezier />, value: 'default', description: 'Smooth curved connections' },
+    { label: 'Smooth', icon: <Icons.Smooth />, value: 'smoothstep', description: 'Rounded right-angle connections' },
+    { label: 'Straight', icon: <Icons.Straight />, value: 'straight', description: 'Direct straight line connections' },
+    { label: 'Step', icon: <Icons.Step />, value: 'step', description: 'Hard right-angle connections' },
+    { label: 'Animated', icon: <Icons.Animated />, value: 'animated', description: 'Flowing animated connections' },
+  ]
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => { if (!disabled) setHovered(true) }}
+        onMouseLeave={() => { setHovered(false) }}
+        style={{
+          display:      'flex',
+          alignItems:   'center',
+          gap:          '5px',
+          padding:      '4px 9px',
+          borderRadius: '5px',
+          border:       `1px solid ${getBorder()}`,
+          background:   getBg(),
+          color:        getColor(),
+          fontSize:     '11px',
+          fontWeight:   open ? 600 : 400,
+          cursor:       disabled ? 'not-allowed' : 'pointer',
+          opacity:      disabled ? 0.35 : 1,
+          transition:   'all 0.12s',
+          whiteSpace:   'nowrap',
+          fontFamily:   'sans-serif',
+          lineHeight:   1,
+        }}
+      >
+        {selectedLabel}
+        <svg
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+          style={{
+            marginLeft: '1px',
+            transition: 'transform 0.15s',
+            transform:  open ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
+        >
+          <path
+            d="M2 3.5L5 6.5L8 3.5"
+            stroke="currentColor" strokeWidth="1.4"
+            strokeLinecap="round" strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position:      'fixed',
+          top:           `${dropdownPos.top}px`,
+          left:          `${dropdownPos.left}px`,
+          minWidth:      '240px',
+          background:    isDark ? '#0f172a' : '#ffffff',
+          border:        `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}`,
+          borderRadius:  '10px',
+          boxShadow:     isDark
+            ? '0 8px 32px rgba(0,0,0,0.6)'
+            : '0 8px 32px rgba(0,0,0,0.12)',
+          zIndex:        999999,
+          padding:       '6px',
+          display:       'flex',
+          flexDirection: 'column',
+          gap:           '2px',
+        }}>
+          {items.map((item) => {
+            const active = value === item.value
+            return (
+              <button
+                key={item.value}
+                onClick={() => {
+                  onChange(item.value)
+                  setOpen(false)
+                }}
+                style={{
+                  width:        '100%',
+                  display:      'flex',
+                  alignItems:   'center',
+                  gap:          '8px',
+                  padding:      '7px 10px',
+                  borderRadius: '6px',
+                  border:       'none',
+                  background:   active
+                    ? (isDark ? '#1e3a5f' : '#dbeafe')
+                    : 'transparent',
+                  color:        active ? (isDark ? '#60a5fa' : '#1d4ed8') : (isDark ? '#94a3b8' : '#64748b'),
+                  fontSize:     '12px',
+                  fontWeight:   active ? 600 : 400,
+                  cursor:       'pointer',
+                  textAlign:    'left',
+                  whiteSpace:   'nowrap',
+                  fontFamily:   'sans-serif',
+                  transition:   'background 0.1s, color 0.1s',
+                }}
+              >
+                {item.icon}
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                  <span>{item.label}</span>
+                  <span style={{ fontSize: '10px', color: isDark ? '#64748b' : '#94a3b8' }}>
+                    {item.description}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 
 interface ToolbarProps {
@@ -672,50 +860,11 @@ export const Toolbar = ({ onLayoutChange }: ToolbarProps) => {
 
       {/* ── Edge style ────────────────────────────────────────────────── */}
       <ToolbarLabel label="Edges" isDark={isDark} />
-      <ToolbarButton
-        label="Bezier"
-        icon={<Icons.Bezier />}
-        active={settings.edgeStyle === 'default'}
+      <EdgeStyleDropdown
         isDark={isDark}
         disabled={!hasProject}
-        onClick={() => setEdgeStyle('default')}
-        title="Smooth curved connections"
-      />
-      <ToolbarButton
-        label="Smooth"
-        icon={<Icons.Smooth />}
-        active={settings.edgeStyle === 'smoothstep'}
-        isDark={isDark}
-        disabled={!hasProject}
-        onClick={() => setEdgeStyle('smoothstep')}
-        title="Right-angle connections with rounded corners"
-      />
-      <ToolbarButton
-        label="Straight"
-        icon={<Icons.Straight />}
-        active={settings.edgeStyle === 'straight'}
-        isDark={isDark}
-        disabled={!hasProject}
-        onClick={() => setEdgeStyle('straight')}
-        title="Direct straight line connections"
-      />
-      <ToolbarButton
-        label="Step"
-        icon={<Icons.Step />}
-        active={settings.edgeStyle === 'step'}
-        isDark={isDark}
-        disabled={!hasProject}
-        onClick={() => setEdgeStyle('step')}
-        title="Hard right-angle connections"
-      />
-      <ToolbarButton
-        label="Animated"
-        icon={<Icons.Animated />}
-        active={settings.edgeStyle === 'animated'}
-        isDark={isDark}
-        disabled={!hasProject}
-        onClick={() => setEdgeStyle('animated')}
-        title="Flowing animated connections"
+        value={settings.edgeStyle}
+        onChange={setEdgeStyle}
       />
 
       <ToolbarSeparator isDark={isDark} />

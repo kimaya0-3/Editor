@@ -5,12 +5,10 @@ import {
   useProjectStore,
   makeCommId,
   makeZoneInterfaceId,
-  makeInterfaceId,
 } from '../store/projectStore'
 import type { Connection } from '@xyflow/react'
 import type {
   TraxInterSWCommunication,
-  TraxLogicalInterface,
   TraxZoneCommunication,
   TraxZoneInterface,
   TraxSecurityZone,
@@ -18,10 +16,17 @@ import type {
 
 export const useAddCommunication = () => {
   const project                  = useProjectStore((s) => s.project)
-  const addCommunicationWithStub = useProjectStore((s) => s.addCommunicationWithStub)
+  const addCommunication         = useProjectStore((s) => s.addCommunication)
   const addZoneCommunication     = useProjectStore((s) => s.addZoneCommunication)
   const addZoneInterface         = useProjectStore((s) => s.addZoneInterface)
+  const updateCommunication      = useProjectStore((s) => s.updateCommunication)
   const selectCommunication      = useProjectStore((s) => s.selectCommunication)
+
+  const selectCommunicationAfterCommit = useCallback((commId: string) => {
+    window.setTimeout(() => {
+      selectCommunication(commId)
+    }, 0)
+  }, [selectCommunication])
 
   // ── Helper: is this connection component-to-component? ───────────────────
   const isComponentToComponent = useCallback(
@@ -87,23 +92,10 @@ export const useAddCommunication = () => {
       if (sourceIsComp && targetIsComp) {
         const targetComp = project.SWComponents.find((c) => c.subUnit_id === targetId)!
 
-        // Use first existing interface, or create a stub if none exist
+        // Use first existing interface. If none exists, do not auto-create one.
         const existingIface = targetComp.LogicalInterfaces?.[0]
-        const ifaceId       = existingIface?.interface_id ?? makeInterfaceId(targetId)
-        const createStub    = !existingIface
-
-        const stub: TraxLogicalInterface | null = createStub
-          ? {
-              interface_id:              ifaceId,
-              name:                      'New Interface',
-              softwareAttackSurfaceType: 'Network_Interface_API',
-              abstractInterfaceType:     'Network',
-              specificExposureRating_I:  'NoRating',
-              CALCzoneDerivedExposure_I: 'NoRating',
-              isManagementInterface:     false,
-              fromUntrustedZones:        false,
-            }
-          : null
+        if (!existingIface) return
+        const ifaceId = existingIface.interface_id
 
         const commId = makeCommId()
         const comm: TraxInterSWCommunication = {
@@ -114,9 +106,11 @@ export const useAddCommunication = () => {
           viaUntrustedZones:        false,
           TargetInterface:          { interface_id: ifaceId },
           SourceComponent:          { subUnit_id: sourceId },
+          // New component communications start without a source interface selected.
+          SourceInterface:          undefined,
         }
 
-        addCommunicationWithStub(sourceId, targetId, comm, stub, {
+        addCommunication(sourceId, comm, {
           entityType:   'communication',
           sourceType:   'component',
           targetType:   'component',
@@ -126,8 +120,13 @@ export const useAddCommunication = () => {
           color:        '#3b82f6',
         })
 
+        // Guard against any downstream/default behavior that may inject a source interface.
+        window.setTimeout(() => {
+          updateCommunication(commId, { SourceInterface: undefined })
+        }, 0)
+
         // Select it so the editor opens immediately in the side panel
-        selectCommunication(commId)
+        selectCommunicationAfterCommit(commId)
         return
       }
 
@@ -176,16 +175,17 @@ export const useAddCommunication = () => {
         })
 
         // Select it so the editor opens immediately in the side panel
-        selectCommunication(commId)
+        selectCommunicationAfterCommit(commId)
         return
       }
     },
     [
       project,
-      addCommunicationWithStub,
+      addCommunication,
       addZoneCommunication,
-      selectCommunication,
       ensureZoneInterface,
+      updateCommunication,
+      selectCommunicationAfterCommit,
     ],
   )
 

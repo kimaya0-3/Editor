@@ -18,6 +18,7 @@ const COMP_W       = 220
 const COMP_H       = 140
 const ZONE_PADDING = 40
 const ZONE_HEADER  = 50
+const ZONE_CHILD_Y = ZONE_HEADER + ZONE_PADDING + 24
 const ZONE_GAP     = 24
 const ZONE_MIN_W   = 300
 const ZONE_MIN_H   = 200
@@ -119,13 +120,13 @@ export const horizontalLayout = (
     let cursorX    = ZONE_PADDING
 
     for (const sub of subZones) {
-      positions[sub.zone_id] = { x: cursorX, y: ZONE_HEADER + ZONE_PADDING }
+      positions[sub.zone_id] = { x: cursorX, y: ZONE_CHILD_Y }
       layoutZone(sub)
       cursorX += (sizes[sub.zone_id]?.width ?? ZONE_MIN_W) + ZONE_GAP
     }
 
     for (const comp of comps) {
-      positions[comp.subUnit_id] = { x: cursorX, y: ZONE_HEADER + ZONE_PADDING }
+      positions[comp.subUnit_id] = { x: cursorX, y: ZONE_CHILD_Y }
       cursorX += COMP_W + ZONE_GAP
     }
   }
@@ -157,13 +158,13 @@ export const verticalLayout = (
     let cursorX    = ZONE_PADDING
 
     for (const sub of subZones) {
-      positions[sub.zone_id] = { x: cursorX, y: ZONE_HEADER + ZONE_PADDING }
+      positions[sub.zone_id] = { x: cursorX, y: ZONE_CHILD_Y }
       layoutZone(sub)
       cursorX += (sizes[sub.zone_id]?.width ?? ZONE_MIN_W) + ZONE_GAP
     }
 
     for (const comp of comps) {
-      positions[comp.subUnit_id] = { x: cursorX, y: ZONE_HEADER + ZONE_PADDING }
+      positions[comp.subUnit_id] = { x: cursorX, y: ZONE_CHILD_Y }
       cursorX += COMP_W + ZONE_GAP
     }
   }

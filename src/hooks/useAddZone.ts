@@ -8,6 +8,7 @@ import type { TraxSecurityZone } from '../types/index'
 
 export const useAddZone = () => {
   const addZone      = useProjectStore((s) => s.addZone)
+  const selectZone   = useProjectStore((s) => s.selectZone)
   const { screenToFlowPosition } = useReactFlow()
 
   return useCallback(
@@ -39,8 +40,13 @@ export const useAddZone = () => {
         labelPosition: 'top',
       })
 
+      // Select the newly created zone after state commit.
+      window.setTimeout(() => {
+        selectZone(zoneId)
+      }, 0)
+
   
     },
-    [addZone, screenToFlowPosition],
+    [addZone, selectZone, screenToFlowPosition],
   )
 }

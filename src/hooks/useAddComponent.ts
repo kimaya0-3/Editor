@@ -8,6 +8,8 @@ import type { Node } from '@xyflow/react'
 
 export const useAddComponent = () => {
   const addComponent  = useProjectStore((s) => s.addComponent)
+  const selectComponent = useProjectStore((s) => s.selectComponent)
+  const MIN_COMPONENT_Y_IN_ZONE = 96
 
   // clickedNode  = the zoneNode the user clicked on
   // clickPos     = flow-space position of the click (relative to canvas)
@@ -35,7 +37,7 @@ export const useAddComponent = () => {
 
       addComponent(component, {
         x:             Math.max(8, relX - 60),   // keep inside zone bounds
-        y:             Math.max(32, relY - 20),
+        y:             Math.max(MIN_COMPONENT_Y_IN_ZONE, relY - 20),
         width:         120,
         height:        40,
         color:         '#166534',
@@ -43,8 +45,13 @@ export const useAddComponent = () => {
         parentId:      zoneId,
       })
 
+      // Select the newly created component after state commit.
+      window.setTimeout(() => {
+        selectComponent(compId)
+      }, 0)
+
       // Stay in addComponent mode — user may want to add more
     },
-    [addComponent],
+    [addComponent, selectComponent],
   )
 }

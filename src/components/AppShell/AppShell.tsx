@@ -25,10 +25,11 @@ export const AppShell = () => {
       <div style={{
         display:       'flex',
         flexDirection: 'column',
-        width:         '100vw',
-        height:        '100vh',
+        width:         '100%',
+        height:        '100dvh',
         overflow:      'hidden',
         background:    isDark ? '#030712' : '#f8fafc',
+        boxSizing:     'border-box',
       }}>
 
         {/* ── Top Toolbar ─────────────────────────────────────────────── */}

@@ -251,6 +251,10 @@ const CanvasInner = () => {
   // ── Node changes ──────────────────────────────────────────────────────────
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      if (editorMode === 'addEdge') {
+        return
+      }
+
       setNodes((nds) => applyNodeChanges(changes, nds))
       setTimeout(() => {
         changes.forEach((change) => {
@@ -270,7 +274,7 @@ const CanvasInner = () => {
         })
       }, 0)
     },
-    [updateNodePosition],
+    [editorMode, updateNodePosition],
   )
 
   // ── Edge changes — intercept removes so they delete from store too ─────────
@@ -336,18 +340,15 @@ const CanvasInner = () => {
   const onConnect = useCallback(
     (connection: Connection) => {
       handleAddEdge(connection)
-      if (editorMode === 'addEdge') {
-        setEditorMode('idle')
-      }
     },
-    [editorMode, handleAddEdge, setEditorMode],
+    [handleAddEdge],
   )
 
   // ── Cursor ────────────────────────────────────────────────────────────────
   const cursorStyle =
     editorMode === 'addZone'      ? 'crosshair' :
     editorMode === 'addComponent' ? 'cell'      :
-    'default'
+    'grab'
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -377,10 +378,12 @@ const CanvasInner = () => {
           fitView
           fitViewOptions={{ padding: 0.2 }}
           nodeOrigin={[0, 0]}
-          nodesDraggable={true}
+          connectionMode="Loose"
+          defaultEdgeOptions={{ zIndex: 10 }}
+          nodesDraggable={editorMode !== 'addEdge'}
           nodeDragThreshold={1}
           nodesConnectable={true}
-          elementsSelectable={true}
+          elementsSelectable={editorMode !== 'addEdge'}
           colorMode={isDark ? 'dark' : 'light'}
         >
           <Background
