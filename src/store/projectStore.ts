@@ -1226,7 +1226,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   // ── Atomic: communication + optional stub interface ───────────────────────
 
-  addCommunicationWithStub: (sourceId, targetId, comm, stub, layoutProps) =>
+  addCommunicationWithStub: (sourceId, _targetId, comm, _stub, layoutProps) =>
     set((s) => {
       if (!s.project) return s
 

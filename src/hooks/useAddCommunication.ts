@@ -4,11 +4,13 @@ import { useCallback } from 'react'
 import {
   useProjectStore,
   makeCommId,
+  makeInterfaceId,
   makeZoneInterfaceId,
 } from '../store/projectStore'
 import type { Connection } from '@xyflow/react'
 import type {
   TraxInterSWCommunication,
+  TraxLogicalInterface,
   TraxZoneCommunication,
   TraxZoneInterface,
   TraxSecurityZone,
@@ -17,6 +19,7 @@ import type {
 export const useAddCommunication = () => {
   const project                  = useProjectStore((s) => s.project)
   const addCommunication         = useProjectStore((s) => s.addCommunication)
+  const addLogicalInterface      = useProjectStore((s) => s.addLogicalInterface)
   const addZoneCommunication     = useProjectStore((s) => s.addZoneCommunication)
   const addZoneInterface         = useProjectStore((s) => s.addZoneInterface)
   const updateCommunication      = useProjectStore((s) => s.updateCommunication)
@@ -74,6 +77,34 @@ export const useAddCommunication = () => {
     [addZoneInterface, inferZoneInterfaceType],
   )
 
+  const ensureComponentInterface = useCallback(
+    (subUnitId: string): TraxLogicalInterface => {
+      const current = useProjectStore.getState().project
+      const comp = current?.SWComponents.find((c) => c.subUnit_id === subUnitId)
+      const existing = comp?.LogicalInterfaces?.[0]
+      if (existing) return existing
+
+      const iface: TraxLogicalInterface = {
+        interface_id:              makeInterfaceId(subUnitId),
+        name:                      'New Interface',
+        softwareAttackSurfaceType: 'Network_Interface_API',
+        abstractInterfaceType:     'Network',
+        specificExposureRating_I:  'NoRating',
+        CALCzoneDerivedExposure_I: 'NoRating',
+        isManagementInterface:     false,
+        fromUntrustedZones:        false,
+      }
+
+      addLogicalInterface(subUnitId, iface)
+
+      const refreshed = useProjectStore.getState().project?.SWComponents.find(
+        (c) => c.subUnit_id === subUnitId
+      )
+      return refreshed?.LogicalInterfaces?.find((i) => i.interface_id === iface.interface_id) ?? iface
+    },
+    [addLogicalInterface],
+  )
+
   // ── Main handler — called directly from onConnect ─────────────────────────
   const handleAddEdge = useCallback(
     (connection: Connection) => {
@@ -90,12 +121,10 @@ export const useAddCommunication = () => {
 
       // ── Component → Component ─────────────────────────────────────────────
       if (sourceIsComp && targetIsComp) {
-        const targetComp = project.SWComponents.find((c) => c.subUnit_id === targetId)!
-
-        // Use first existing interface. If none exists, do not auto-create one.
-        const existingIface = targetComp.LogicalInterfaces?.[0]
-        if (!existingIface) return
-        const ifaceId = existingIface.interface_id
+        // Ensure both ends have at least one interface before creating communication.
+        ensureComponentInterface(sourceId)
+        const targetIface = ensureComponentInterface(targetId)
+        const ifaceId = targetIface.interface_id
 
         const commId = makeCommId()
         const comm: TraxInterSWCommunication = {
@@ -184,6 +213,7 @@ export const useAddCommunication = () => {
       addCommunication,
       addZoneCommunication,
       ensureZoneInterface,
+      ensureComponentInterface,
       updateCommunication,
       selectCommunicationAfterCommit,
     ],

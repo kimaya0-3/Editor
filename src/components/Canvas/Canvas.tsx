@@ -5,6 +5,7 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   MiniMap,
   applyNodeChanges,
@@ -18,6 +19,7 @@ import type {
   Node,
   Edge,
   Connection,
+  OnConnectStart,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -125,6 +127,7 @@ const CanvasInner = () => {
   // ── Refs ──────────────────────────────────────────────────────────────────
   const nodesRef                    = useRef<Node[]>(nodes)
   const stampRebuildJustHappenedRef = useRef(false)
+  const connectStartNodeIdRef       = useRef<string | null>(null)
 
   useEffect(() => { nodesRef.current = nodes }, [nodes])
 
@@ -337,9 +340,37 @@ const CanvasInner = () => {
   )
 
   // ── onConnect — create immediately, no modal ──────────────────────────────
+  const onConnectStart = useCallback<OnConnectStart>(
+    (_event, params) => {
+      connectStartNodeIdRef.current = params.nodeId ?? null
+    },
+    [],
+  )
+
+  const onConnectEnd = useCallback(() => {
+    connectStartNodeIdRef.current = null
+  }, [])
+
   const onConnect = useCallback(
     (connection: Connection) => {
-      handleAddEdge(connection)
+      const startedFrom = connectStartNodeIdRef.current
+      if (!startedFrom) {
+        handleAddEdge(connection)
+        return
+      }
+
+      const sourceId = startedFrom
+      const targetId = connection.source === startedFrom
+        ? connection.target
+        : connection.target === startedFrom
+          ? connection.source
+          : connection.target
+
+      handleAddEdge({
+        ...connection,
+        source: sourceId,
+        target: targetId,
+      })
     },
     [handleAddEdge],
   )
@@ -374,11 +405,13 @@ const CanvasInner = () => {
           onEdgeClick={onEdgeClick}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
           onConnect={onConnect}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           nodeOrigin={[0, 0]}
-          connectionMode="Loose"
+          connectionMode={ConnectionMode.Loose}
           defaultEdgeOptions={{ zIndex: 10 }}
           nodesDraggable={editorMode !== 'addEdge'}
           nodeDragThreshold={1}

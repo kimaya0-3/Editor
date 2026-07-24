@@ -138,7 +138,7 @@ const ComponentCommEditor = ({
   const updateCommunication = useProjectStore((s) => s.updateCommunication)
   const project             = useProjectStore((s) => s.project)
 
-  const allComponents = project?.SWComponents ?? []
+  const allComponents = useMemo(() => project?.SWComponents ?? [], [project])
   const ownerComponentId = useMemo(() => {
     if (!project) return ''
     return project.SWComponents.find((c) =>
@@ -149,30 +149,29 @@ const ComponentCommEditor = ({
   const currentSourceComponentId = comm.SourceComponent?.subUnit_id ?? ownerComponentId
 
   const sourceSelectionOptions = useMemo(() => {
-    const currentSourceComponent = allComponents.find(
-      (c) => c.subUnit_id === currentSourceComponentId
-    )
+    const prioritized = [...allComponents].sort((a, b) => {
+      if (a.subUnit_id === currentSourceComponentId) return -1
+      if (b.subUnit_id === currentSourceComponentId) return 1
 
-    const sourceComponent = currentSourceComponent ?? allComponents[0]
-    if (!sourceComponent) return []
+      const aName = a.name?.trim() || a.subUnit_id
+      const bName = b.name?.trim() || b.subUnit_id
+      return aName.localeCompare(bName)
+    })
 
-    const sourceLabel = sourceComponent.name?.trim() || sourceComponent.subUnit_id
+    return prioritized.flatMap((component) => {
+      const componentLabel = component.name?.trim() || component.subUnit_id
+      const base = [{
+        value: `${component.subUnit_id}::none`,
+        label: componentLabel,
+      }]
 
-    const base = [{
-      value: `${sourceComponent.subUnit_id}::none`,
-      label: sourceLabel,
-    }]
+      const interfaceOptions = (component.LogicalInterfaces ?? []).map((iface) => ({
+        value: `${component.subUnit_id}::${iface.interface_id}`,
+        label: `${componentLabel} - ${iface.name}`,
+      }))
 
-    const networkInterfaces = (sourceComponent.LogicalInterfaces ?? []).filter(
-      (iface) => iface.abstractInterfaceType === 'Network'
-    )
-
-    const withInterfaces = networkInterfaces.map((iface) => ({
-      value: `${sourceComponent.subUnit_id}::${iface.interface_id}`,
-      label: `${sourceLabel} - ${iface.name}`,
-    }))
-
-    return [...base, ...withInterfaces]
+      return [...base, ...interfaceOptions]
+    })
   }, [allComponents, currentSourceComponentId])
 
   const rawSourceSelectionValue = `${currentSourceComponentId}::${comm.SourceInterface?.interface_id ?? 'none'}`
@@ -250,7 +249,7 @@ const ComponentCommEditor = ({
             </div>
           )}
 
-          {/* Target Interface — editable dropdown */}
+          {/* Target Interface — interface-only dropdown */}
           <div style={f.wrapper}>
             <label style={f.label}>Target Interface</label>
             {targetInterfaces.length > 0 ? (
@@ -264,7 +263,7 @@ const ComponentCommEditor = ({
                 >
                   {targetInterfaces.map((iface) => (
                     <option key={iface.interface_id} value={iface.interface_id}>
-                      {iface.name} - {iface.interface_id}
+                      {iface.name?.trim() || iface.interface_id}
                     </option>
                   ))}
                 </select>

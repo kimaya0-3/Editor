@@ -4,7 +4,6 @@ import { useCallback }       from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { Toolbar }           from '../Toolbar/Toolbar'
 import { EditorPanel }       from '../Editor/EditorPanel'
-import { SidePanel }         from '../SidePanel/SidePanel'
 import { Canvas }            from '../Canvas/Canvas'
 import { LegendTooltip }     from '../Canvas/LegendTooltip'
 import { useProjectStore }   from '../../store/projectStore'
@@ -53,8 +52,6 @@ export const AppShell = () => {
           }}>
             <Canvas />
           </div>
-
-          <SidePanel />
 
         </div>
 
